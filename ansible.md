@@ -32,7 +32,7 @@ Les chapitres qui devraient nous intéréssés le plus, sont les chapitre 5 (Dep
 # 2. Installation de l'environnement
 
 Pour utiliser Ansible, il faut installer le paquet `python3-venv` (virtual environement pour python3).
-Cela nous permet d'utiliser un environnement virtuel et ne pas casser notre installation global de python avec des librairies de différentes versions.
+Cela nous permet d'utiliser un environnement virtuel et ne pas casser notre machine hôte. En effet, python a plusieurs versions de plusieurs librairies et virtualenv nous permet d'avoir des versions pour un environnement donné.
 
 - vérifier qu'on a `python3`
 
@@ -40,5 +40,191 @@ Cela nous permet d'utiliser un environnement virtuel et ne pas casser notre inst
 patou@pa-linux:~$ python3 --version
 Python 3.7.3
 ```
-Pour installer virtualenv, on va taper la commande suivante 
+- Pour chercher le paquet virtualenv, on va taper la commande suivante.
+On peut l'installer en utilisant `pip3` ou en utilisant `apt-get install`. 
+Nous allons utiliser `apt-get` pour cette installation.
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/venvs$ aptitude search venv
+p   apt-venv                                                           - apt virtual environment                                                     
+p   elpa-pyvenv                                                        - Python virtual environment interface                                        
+p   python3-venv                                                       - pyvenv-3 binary for python3 (default python3 version)                       
+v   python3-venv:any                                                   -                                                                             
+i A python3.7-venv                                                     - Interactive high-level object-oriented language (pyvenv binary, version 3.7)
+v   python3.7-venv:any                                                 - 
+```
+- Nous allons installer alors le paquet:
 
+```sh
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/venvs$ sudo apt-get install python3-venv
+Lecture des listes de paquets... Fait
+Construction de l'arbre des dépendances       
+Lecture des informations d'état... Fait
+Les paquets supplémentaires suivants seront installés : 
+  python3.7-venv
+Les NOUVEAUX paquets suivants seront installés :
+  python3-venv python3.7-venv
+0 mis à jour, 2 nouvellement installés, 0 à enlever et 14 non mis à jour.
+Il est nécessaire de prendre 7 328 o dans les archives.
+Après cette opération, 44,0 ko d'espace disque supplémentaires seront utilisés.
+Souhaitez-vous continuer ? [O/n] o
+Réception de :1 http://ftp.fr.debian.org/debian buster/main amd64 python3.7-venv amd64 3.7.3-2+deb10u2 [6 148 B]
+Réception de :2 http://ftp.fr.debian.org/debian buster/main amd64 python3-venv amd64 3.7.3-1 [1 180 B]
+7 328 o réceptionnés en 0s (23,3 ko/s)       
+Sélection du paquet python3.7-venv précédemment désélectionné.
+(Lecture de la base de données... 310023 fichiers et répertoires déjà installés.)
+Préparation du dépaquetage de .../python3.7-venv_3.7.3-2+deb10u2_amd64.deb ...
+Dépaquetage de python3.7-venv (3.7.3-2+deb10u2) ...
+Sélection du paquet python3-venv précédemment désélectionné.
+Préparation du dépaquetage de .../python3-venv_3.7.3-1_amd64.deb ...
+Dépaquetage de python3-venv (3.7.3-1) ...
+Paramétrage de python3.7-venv (3.7.3-2+deb10u2) ...
+Paramétrage de python3-venv (3.7.3-1) ...
+Traitement des actions différées (« triggers ») pour man-db (2.8.5-2) ...
+Scanning processes...                                                                                                                                
+Scanning linux images...                                                                                                                             
+
+Running kernel seems to be up-to-date.
+
+Failed to check for processor microcode upgrades.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+```
+- testons alors l'installation de virtualenv.
+
+```sh
+patou@pa-linux:~$ python3 -m venv
+usage: venv [-h] [--system-site-packages] [--symlinks | --copies] [--clear]
+            [--upgrade] [--without-pip] [--prompt PROMPT]
+            ENV_DIR [ENV_DIR ...]
+venv: error: the following arguments are required: ENV_DIR
+
+```
+Cette commande nous permet de savoir que `venv` est donc disponible.
+
+- Pour créer un environnement virtuel `Python3`, nous devons avoir un répertoire pour mettre toute l'installation de l'environnement virtuel. 
+Pour ma part, Je vais créer un répertoire `venvs` dans `/home/patou/Documents/bizna/pasFini/demoAnsible/venvs/` et je vais entrer dedans en ligne de commande et créer mon environnement à partir de ce répertoire. 
+
+On va nommer notre nouvel environnement virtuel `introansible`
+
+```bash
+patou@pa-linux:~$ cd /home/patou/Documents/bizna/pasFini/Ansible/venvs/
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/venvs$ python3 -m venv introansible
+```
+Si aucune réponse, c'est que tout s'est bien passé.
+
+- Pour lancer mon environnement virtuel, il faut sourcer un script `bin/activate` dans le répertoire de l'environnement (rappel sur le terme `sourcer un script` https://forums.commentcamarche.net/forum/affich-19783797-lancer-un-script-vs-sourcer-un-script). 
+
+Pour cela, on va taper la commande suivante dans la ligne de commande.
+
+```sh
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ source introansible/bin/activate
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ 
+```
+Quand le script est bien sourcé, nous sommes alors dans l'environnement virtuel. Cela est signalé par le fait que nous avons le nom de notre environnement virtuel entre parenthèse devant la ligne de commande.
+
+On peut alors tout installer dans l'environnement virtuel et il sera impacté par les changements mais notre machine hôte (la machine non virtuelle) ne sera pas impacté. Cela signifie que si nous installons `Ansible` dans la machine virtuelle, la machine hôte n'aura pas `Ansible` car on l'a installé dans l'environnement virtuel.
+ 
+- Installation de `Ansible` dans l'environnement virtuel.
+
+```js
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ pip install ansible 
+Collecting ansible
+  Downloading https://files.pythonhosted.org/packages/32/62/eec759cd8ac89a866df1aba91abf785486fed7774188a41f42f5c7326dcb/ansible-2.9.13.tar.gz (14.3MB)
+    100% |████████████████████████████████| 14.3MB 107kB/s 
+Collecting PyYAML (from ansible)
+  Downloading https://files.pythonhosted.org/packages/64/c2/b80047c7ac2478f9501676c988a5411ed5572f35d1beff9cae07d321512c/PyYAML-5.3.1.tar.gz (269kB)
+    100% |████████████████████████████████| 276kB 2.1MB/s 
+Collecting cryptography (from ansible)
+  Downloading https://files.pythonhosted.org/packages/43/2e/8d2de0d73d177184bc9a15137cd9aae46c1b3a59842b5fde30c8b80a5b4e/cryptography-3.1-cp35-abi3-manylinux1_x86_64.whl (2.6MB)
+    100% |████████████████████████████████| 2.6MB 557kB/s 
+Collecting jinja2 (from ansible)
+  Using cached https://files.pythonhosted.org/packages/30/9e/f663a2aa66a09d838042ae1a2c5659828bb9b41ea3a6efa20a20fd92b121/Jinja2-2.11.2-py2.py3-none-any.whl
+Collecting six>=1.4.1 (from cryptography->ansible)
+  Downloading https://files.pythonhosted.org/packages/ee/ff/48bde5c0f013094d729fe4b0316ba2a24774b3ff1c52d924a8a4cb04078a/six-1.15.0-py2.py3-none-any.whl
+Collecting cffi!=1.11.3,>=1.8 (from cryptography->ansible)
+  Downloading https://files.pythonhosted.org/packages/ad/82/cc3e38b7859e1426d7c004503962074317f3ccbd46adbef5b8094c9688c3/cffi-1.14.2-cp37-cp37m-manylinux1_x86_64.whl (401kB)
+    100% |████████████████████████████████| 409kB 1.6MB/s 
+Collecting MarkupSafe>=0.23 (from jinja2->ansible)
+  Downloading https://files.pythonhosted.org/packages/98/7b/ff284bd8c80654e471b769062a9b43cc5d03e7a615048d96f4619df8d420/MarkupSafe-1.1.1-cp37-cp37m-manylinux1_x86_64.whl
+Collecting pycparser (from cffi!=1.11.3,>=1.8->cryptography->ansible)
+  Downloading https://files.pythonhosted.org/packages/ae/e7/d9c3a176ca4b02024debf82342dab36efadfc5776f9c8db077e8f6e71821/pycparser-2.20-py2.py3-none-any.whl (112kB)
+    100% |████████████████████████████████| 112kB 2.0MB/s 
+Building wheels for collected packages: ansible, PyYAML
+  Running setup.py bdist_wheel for ansible ... error
+  Complete output from command /home/patou/Documents/bizna/pasFini/Ansible/venvs/introansible/bin/python3 -u -c "import setuptools, tokenize;__file__='/tmp/pip-install-kpp2q4kg/ansible/setup.py';f=getattr(tokenize, 'open', open)(__file__);code=f.read().replace('\r\n', '\n');f.close();exec(compile(code, __file__, 'exec'))" bdist_wheel -d /tmp/pip-wheel-s9xjn_ef --python-tag cp37:
+  usage: -c [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+     or: -c --help [cmd1 cmd2 ...]
+     or: -c --help-commands
+     or: -c cmd --help
+  
+  error: invalid command 'bdist_wheel'
+  
+  ----------------------------------------
+  Failed building wheel for ansible
+  Running setup.py clean for ansible
+  Running setup.py bdist_wheel for PyYAML ... error
+  Complete output from command /home/patou/Documents/bizna/pasFini/Ansible/venvs/introansible/bin/python3 -u -c "import setuptools, tokenize;__file__='/tmp/pip-install-kpp2q4kg/PyYAML/setup.py';f=getattr(tokenize, 'open', open)(__file__);code=f.read().replace('\r\n', '\n');f.close();exec(compile(code, __file__, 'exec'))" bdist_wheel -d /tmp/pip-wheel-h6lormrk --python-tag cp37:
+  usage: -c [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+     or: -c --help [cmd1 cmd2 ...]
+     or: -c --help-commands
+     or: -c cmd --help
+  
+  error: invalid command 'bdist_wheel'
+  
+  ----------------------------------------
+  Failed building wheel for PyYAML
+  Running setup.py clean for PyYAML
+Failed to build ansible PyYAML
+Installing collected packages: PyYAML, six, pycparser, cffi, cryptography, MarkupSafe, jinja2, ansible
+  Running setup.py install for PyYAML ... done
+  Running setup.py install for ansible ... done
+Successfully installed MarkupSafe-1.1.1 PyYAML-5.3.1 ansible-2.9.13 cffi-1.14.2 cryptography-3.1 jinja2-2.11.2 pycparser-2.20 six-1.15.0
+
+
+```
+Dès qu'on voit `Successfully installed`,  cela signifie que `ansible` est maintenant installé.
+Pour sortir du virtualenv, on tape à la console `deactivate`.
+
+
+Nous allons maintenant tester ansible. Pour ce test, nous allons utiliser ce qu'on appelle une commande `ad-hoc` (en langue française "ad-hoc" signifie qui convient parfaitement à une situation - https://www.linternaute.fr/dictionnaire/fr/definition/ad-hoc/). 
+
+Une introduction aux commandes ad-hoc se trouve dans la doc officielle (https://docs.ansible.com/ansible/latest/user_guide/intro_adhoc.html)
+
+Voici la syntax d'une commande ad-hoc 
+```bash
+$ ansible [pattern] -m [module] -a "[module options]"
+```
+[pattern] corresponds à la machine ou au groupe de machine sur lesquels voudriez lancer la commande (ansible permet de lancer des commandes sur plusieurs machines également)
+[module] est le module. 
+
+Sur le site ci-dessus, permet de voir plusieurs exemples.
+
+Pour tester, nous allons automatiser l'affichage d'un caractère dans `localhost`.
+Pour afficher en ligne de commande, on utilise la commande `echo`
+Par exemple : 
+![](img/echo_ansible.png)
+
+Maintenant, nous allons utiliser  ansible pour afficher une chaîne de caractère à partir de notre environnement virtuel (commande lancé dans l'environnement virtuel vers localhost (la machine hôte)).
+
+La commande est la suivante:
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ansible localhost -a "echo 'Hello world'"
+```
+
+remarquez que les guillements (`"` ont été remplacés par des quotes `'`)
+
+La réponse attendue est la suivante :
+
+```bash
+[WARNING]: No inventory was parsed, only implicit localhost is available
+localhost | CHANGED | rc=0 >>
+Hello world
+```
+Il y a des warnings mais le message est affiché.
+
+Cela nous permet de voir que `ansible` est correctement installé.
