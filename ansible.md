@@ -228,3 +228,69 @@ Hello world
 Il y a des warnings mais le message est affiché.
 
 Cela nous permet de voir que `ansible` est correctement installé.
+
+# 3. Installation d'une clé ssh pour l'authentification
+
+Une première information sur ssh se trouve sur wikipedia (https://fr.wikipedia.org/wiki/Secure_Shell).
+
+Pour se connecter à d'autres ordinateurs, on peut utiliser le protocole SSH (Secure Shell)
+
+Dans notre cas, nous allons simuler la connexion à plusieurs ordinateurs pour automatiser des tâches dessus. Pour l'authentification, nous utiliserons SSH.
+
+Pour commencer, nous allons installer une clé ssh. Nous allons utiliser la commande `ssh-keygen` pour générer une clé rsa (https://fr.wikipedia.org/wiki/Chiffrement_RSA)
+
+Un petit tuto sur `ssh-keygen` se trouve ici (à voir quand on en a besoin https://www.ssh.com/ssh/keygen/)
+Nous allons utiliser l'option `-t` pour choisir un algorithme (les algos valides sont : rsa, dsa, ecdsa etc etc ...), et l'option `-b` pour choisir la taille de la clé à générer et `-C` pour rajouter un commentaire.
+
+Quand vous executerez la commande, elle demandera où le fichier de clé sera généré (car la clé sera rangé dans un fichier). Le nom de cette clé est par défaut `id_rsa`. Mais nous allons plutôt l'enregistrer `introansible` (taper le chemin complet `/home/patou/.ssh/introansible`). 
+
+Ne pas spécifier de passphrase dans la deuxième étape. Il faut juste valider quand il demande le passphrase.
+
+Remplacer le mail par le votre.
+
+
+
+
+La commande pour générer notre clé sera donc : 
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ssh-keygen -t rsa -b 4096 -C xchess64@gmail.com
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/patou/.ssh/id_rsa): /home/patou/.ssh/introansible
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/patou/.ssh/introansible.
+Your public key has been saved in /home/patou/.ssh/introansible.pub.
+The key fingerprint is:
+SHA256:vax5QhSDvNZwO3oTMqdCprnsLfUL5mi4BSNHHJ07Bo8 xchess64@gmail.com
+The key's randomart image is:
++---[RSA 4096]----+
+|  .. o .         |
+| ...o + +        |
+|  o+ . = +       |
+| .E B = B.       |
+|+ .* o BSo.      |
+|.+o o o +. .     |
+| o.ooo o .o      |
+|..== .. .o.      |
+|.+o.o ..oo       |
++----[SHA256]-----+
+
+```
+
+A ce stade, nous avons généré notre clé ssh.
+Nous allons maintenant vérifier que la clé est bien generé.
+
+```bash 
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ls /home/patou/.ssh
+introansible  introansible.pub  known_hosts
+
+```
+On a les deux clés `privée` et `publique`. 
+- la clé privée est : `introansible`. Cette clé doit être caché et ne doit pas être divulgué.
+- la clé publique est : `introansible.pub`. Cette clé peut être divulgué et même mis sur les serveurs distants qu'on voudrait accéder en ssh.
+- Le fichier `known-host` est un fichier texte qui contient la clé publique de tous les ordinateurs sur lesquels votre ordinateur s'est déjà connecté. Donc si vous n'avez jamais utilisé ssh, c'est normal de ne pas avoir ce fichier.
+
+Maintenant que nous avons notre clé ssh, nous allons commencer à travailler vraiment sur Ansible.
+
+
