@@ -323,3 +323,23 @@ Nous avons donc vu 6 concepts fondamentaux d'ansible:
 - `Playbooks` qui sont des ensembles de roles que nous allons executer.
 - `Inventory` ou Inventaire qui nous permet de cibler sur quelles machines, on souhaite lancer un playbook donné
 - `YAML` qui est le langage qui nous permet d'ecrire des tasks et des fichiers d'inventaire.
+
+Nous allons les voir un à un.
+
+## 4.1 Modules
+Les modules sont des codes qui sont fournies par Ansible (en python, en ruby ou en Java)
+
+Ce code permet de faire une action spécifique et claire comme par exemple: 
+- cloner un dépot git
+- Activer le firewall d'un OS
+- envoyer une notification (email par ex)
+
+En général, il existe des modules pour faire toute action auquel on peut penser. Ainsi, le site officiel a classé les modules par catégories.
+
+Et on les voit ici (https://docs.ansible.com/ansible/latest/modules/modules_by_category.html)
+
+Ainsi, on a évoqué un module qui permet d'envoyer des notifications et dans cette liste on a bien une catégorie `Notification` (https://docs.ansible.com/ansible/latest/modules/list_of_notification_modules.html)
+
+Et si vous êtes assez ambitieux pour cliquer sur `All modules`, vous trouverez des centaines de modules.
+
+Les modules sont appelés quand on écrit des tasks.
