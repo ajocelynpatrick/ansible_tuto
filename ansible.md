@@ -294,3 +294,32 @@ On a les deux clés `privée` et `publique`.
 Maintenant que nous avons notre clé ssh, nous allons commencer à travailler vraiment sur Ansible.
 
 
+# 4. Concepts ansibles à comprendre
+Il existe quelques termes et concepts que nous devons apprendre et comprendre avant d'avancer dans l'utilisation d'Ansible. Cela nous permettra de bien comprendre ce qu'on fait et les termes qu'on utilise.
+
+- les modules: Ce sont des libraries qui nous permettent d'executer des actions spécifiques (sur des fichiers, sur git, sur des bases de données, service ...). Les noms des modules dans Ansibles ont des noms familiers, c'est-à-dire que si vous travaillez avec git, le module Ansible responsable des opérations sur git s'appelera git également.
+![](img/module.png)
+
+- Les tasks: Ce sont des codes, qu'on a écrit pour executer une action et ces tasks, en général, utilisent des mdoules.
+Ex: Si on souhaite spécifier un répository git où on souhaite pousser notre code, on peut ecrire un task ansible pour le faire.
+![](img/tasks.png)
+
+- Les roles: Comme on peut avoir des dizaines ou des centaines de task, il nous faut également des manières d'organiser ou de grouper les tasks. Les rôles nous permettent de définir quels tâches doivent être appliqués à quels type de serveurs. Les rôles sont appliqués à chaque serveurs. On peut par exemple définir une configuration de sécurité propre à chaque serveur, dans ce cas, on définirait un role pour cela. 
+![](img/role_playbook.png)
+
+- Les playbooks: Un playbook est une manière d'organiser des roles et de les regrouper. On peut également lancer une tâche `ad-hoc` dans Ansible, comme nous l'avons déjà vu, mais les actions les tasks les plus complexes sont mis dans des playbook.
+
+Ce qui nous manque maintenant est comment nous allons addresser les différentes machines. On n'adressera pas par adresse IP ou nom de hote car ce ne serait pas réutilisable (il faut changer d'adresse dès qu'on souhaite changer de machine). Mais nous avons un autre concept pour cela. C'est l'Inventaire (Inventory).
+
+- Inventory: L'inventory associe un role à une adresse IP ou un nom de domaine. Cela nous permet de définir ce qui doit être executé dans les role et à quel endroit les executer dans les inventaires.
+![](img/inventory.png)
+
+- Le dernier concept qu'on doit connaitre est YAML: C'est al langage qui nous permettra d'écrire des tasks. C'est le même langage que ce qu'on a utiliser pour ecrire des fichier `docker-compose.yml`. 
+
+Nous avons donc vu 6 concepts fondamentaux d'ansible:
+- `Modules`: le code qui fait partie d'Ansible
+- `Tasks`: pour décrire quels modules on souhaite utiliser et comment on veut les utiliser
+- `Roles`: qui nous permet de grouper des tasks ensembles selon ce qu'ils font
+- `Playbooks` qui sont des ensembles de roles que nous allons executer.
+- `Inventory` ou Inventaire qui nous permet de cibler sur quelles machines, on souhaite lancer un playbook donné
+- `YAML` qui est le langage qui nous permet d'ecrire des tasks et des fichiers d'inventaire.
