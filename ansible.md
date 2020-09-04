@@ -343,3 +343,24 @@ Ainsi, on a évoqué un module qui permet d'envoyer des notifications et dans ce
 Et si vous êtes assez ambitieux pour cliquer sur `All modules`, vous trouverez des centaines de modules.
 
 Les modules sont appelés quand on écrit des tasks.
+
+## 4.1 Tasks 
+
+Les tâches (ou tasks) sont les éélments qui nous permettent d'effectuer ce que nous souhaitons faire sous Ansible.
+
+Les tasks sont écrits en YAML, ils invoquent/appellent des modules pour effectuer des actions.
+
+Voici un exemple de task écrit en YAML pour installer ltrace
+
+```yml
+- name: s'assurer que ltrace est installe
+  apt: name=ltrace state=present update_cache=yes
+  become: true
+```
+
+`name` est une description de ce que fait la tache et c'est lisible par un humain. Dans notre cas, le task sert à s'assurer que Git est installé sur une machine.
+
+La deuxième ligne contient `apt` (le module apt - donc on suppose qu'on est sur un système Debian ou Ubuntu) et on lui passe 3 arguments ( ̀`name` (nom du package qu'on souhaite vérifier), `state`(l'état du packet qu'on souhaite - ici on souhaite qu'il soit présent donc installé sinon on aurait mis `absent` donc desinstallé) et ̀`update_cache`(le cache est la liste des paquets dans l'OS et on veut le mettre à jour avant d'installer - comme si on faisait un `apt-get update`)).
+
+La troisième ligne: `become:true` signifie qu'on souhaite utiliser les privilèges du superuser (comme si on faisait `sudo` avant de lancer la tâche)
+
