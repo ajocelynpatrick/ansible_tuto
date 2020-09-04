@@ -344,7 +344,7 @@ Et si vous êtes assez ambitieux pour cliquer sur `All modules`, vous trouverez 
 
 Les modules sont appelés quand on écrit des tasks.
 
-## 4.1 Tasks 
+## 4.2 Tasks 
 
 Les tâches (ou tasks) sont les éélments qui nous permettent d'effectuer ce que nous souhaitons faire sous Ansible.
 
@@ -364,3 +364,154 @@ La deuxième ligne contient `apt` (le module apt - donc on suppose qu'on est sur
 
 La troisième ligne: `become:true` signifie qu'on souhaite utiliser les privilèges du superuser (comme si on faisait `sudo` avant de lancer la tâche)
 
+### 4.2.1 Lancer une tâche en mode "ad-hoc"
+
+Pour commencer nous allons nous assurer que le paque `ltrace` n'est pas installé sur notre machine.
+
+```bash
+patou@pa-linux:~$ aptitude search ltrace
+p   babeltrace                                                         - Trace conversion program                                                    
+p   libbabeltrace-ctf-dev                                              - Babeltrace development files (transitional package)                         
+p   libbabeltrace-ctf1                                                 - Babeltrace conversion libraries (transitional package)                      
+p   libbabeltrace-dev                                                  - Babeltrace development files                                                
+p   libbabeltrace1                                                     - Babeltrace conversion libraries                                             
+p   libdevel-calltrace-perl                                            - Code tracer to follow function calls                                        
+p   ltrace                                                             - Tracks runtime library calls in dynamically linked programs                 
+p   python3-babeltrace                                                 - Babeltrace Python 3 bindings                                                
+```
+
+et voit la ligne `p   ltrace       ` qui signifie que le paquet n'est pas installé. Si il était installé, on aurait pu avoir `i` à la place de `p`. 
+De plus, si on tape `ltrace` dans la ligne de commande,on aurait:
+
+```bash
+patou@pa-linux:~$ ltrace
+bash: ltrace : commande introuvable
+```
+
+Nous allons alors l'installer en utilisant `Ansible` 
+
+- Entrer dans votre virtualenv. On rappele que pour cela, il faut entrer dans le répertoire où nous avons créé le virtualenv et sourcer le script `bin/activate` comme ci-dessous (si pas clair, revoir le s section 2)
+
+```bash
+patou@pa-linux:~$ cd ~/Documents/bizna/pasFini/demoAnsible/venvs/
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ source introansible/bin/activate
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ 
+```
+Pour s'assurer que le virtualenv est en route, on a le nom de l'environnement entre parenthèse à gauche de la ligne de commande
+
+Avant de lancer une tâche, nous allons récupérer les informations concernant la machine où on va installer `ltrace` ( dans notre cas, nous allons installer sur `localhost`).
+Cette étape s'appelle `facts gathering` (ou rassemblement des informations)
+La commande est la suivante:
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ansible localhost -m setup
+```
+La commande ne fera aucune action mais juste rassembler des informations concernant la machine `localhost`. Ces informations sont affichés en json en réponse à la commande.
+
+Maintenant, nous allons construire la commande adhoc ansible  qui va se charger d'installer ltrace sur notre machine localhost.
+
+Comment va-t-on créer notre commande `ansible`? 
+
+Comme nous l'avons vu dans la doc donnée en section 2 (pour le mode adhoc - https://docs.ansible.com/ansible/latest/user_guide/intro_adhoc.html), on va envoyer la commande `ansible` et : 
+ - on va spécifier le module avec l'option `-m <nom_module>`. Ici notre module sera `apt` puisque qu'on fera de l'installation.
+ - le deuxième options sera `-a` (pour adhoc command) et il sera suivi d'une chaine de caractère (entre `"`) qui sera les 3 arguments du module  `apt` (tel qu'il a été décrit dans la définition de notre task en paragraphe `4.1`). Donc ce sera `"name=ltrace state=present update_cache=yes"`
+
+- Comme nous avons l'option `become:true`, donc dans la ligne de commande nous devons rajoute `-b`. C'est l'equivalent en mode ligne de commande `ansible` et nous allons également rajouter l'option `-K` pour s'assurer que anible va bien demander bien le mot de passe du superutilisateur avant de faire quoi que ce soit.
+
+- Enfin, nous devons communiquer à ansible qu'il doit utiliser la version de python3 et pour cela, on lui renvoie une variable d'environnement spécial `ansible_python_interpreter` dont on la valeur est le chemin de python3 complet (donc `/usr/bin/python3`). Cela empêchera ansible d'utiliser n'importe quel python installé par défaut (ex: python2 )
+
+Tête bien reposé, la commande à taper est donc la suitante. Il faut penser à fournir le mot de passe root de votre machine quand ansible le demandera. 
+
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ansible localhost -m apt -a "name=ltrace state=present update_cache=yes" -b -K -e ansible_python_interpreter=/usr/bin/python3
+BECOME password: 
+[WARNING]: No inventory was parsed, only implicit localhost is available
+localhost | CHANGED => {
+    "cache_update_time": 1599224228,
+    "cache_updated": false,
+    "changed": true,
+    "stderr": "",
+    "stderr_lines": [],
+    "stdout": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nThe following NEW packages will be installed:\n  ltrace\n0 upgraded, 1 newly installed, 0 to remove and 14 not upgraded.\nNeed to get 143 kB of archives.\nAfter this operation, 372 kB of additional disk space will be used.\nGet:1 http://ftp.fr.debian.org/debian buster/main amd64 ltrace amd64 0.7.3-6.1 [143 kB]\nFetched 143 kB in 0s (558 kB/s)\nSelecting previously unselected package ltrace.\r\n(Reading database ... \r(Reading database ... 5%\r(Reading database ... 10%\r(Reading database ... 15%\r(Reading database ... 20%\r(Reading database ... 25%\r(Reading database ... 30%\r(Reading database ... 35%\r(Reading database ... 40%\r(Reading database ... 45%\r(Reading database ... 50%\r(Reading database ... 55%\r(Reading database ... 60%\r(Reading database ... 65%\r(Reading database ... 70%\r(Reading database ... 75%\r(Reading database ... 80%\r(Reading database ... 85%\r(Reading database ... 90%\r(Reading database ... 95%\r(Reading database ... 100%\r(Reading database ... 310034 files and directories currently installed.)\r\nPreparing to unpack .../ltrace_0.7.3-6.1_amd64.deb ...\r\nUnpacking ltrace (0.7.3-6.1) ...\r\nSetting up ltrace (0.7.3-6.1) ...\r\nProcessing triggers for man-db (2.8.5-2) ...\r\n\nRunning kernel seems to be up-to-date.\n\nFailed to check for processor microcode upgrades.\n\nNo services need to be restarted.\n\nNo containers need to be restarted.\n\nUser sessions running outdated binaries:\n patou @ session #3: sh[4024]\n",
+    "stdout_lines": [
+        "Reading package lists...",
+        "Building dependency tree...",
+        "Reading state information...",
+        "The following NEW packages will be installed:",
+        "  ltrace",
+        "0 upgraded, 1 newly installed, 0 to remove and 14 not upgraded.",
+        "Need to get 143 kB of archives.",
+        "After this operation, 372 kB of additional disk space will be used.",
+        "Get:1 http://ftp.fr.debian.org/debian buster/main amd64 ltrace amd64 0.7.3-6.1 [143 kB]",
+        "Fetched 143 kB in 0s (558 kB/s)",
+        "Selecting previously unselected package ltrace.",
+        "(Reading database ... ",
+        "(Reading database ... 5%",
+        "(Reading database ... 10%",
+        "(Reading database ... 15%",
+        "(Reading database ... 20%",
+        "(Reading database ... 25%",
+        "(Reading database ... 30%",
+        "(Reading database ... 35%",
+        "(Reading database ... 40%",
+        "(Reading database ... 45%",
+        "(Reading database ... 50%",
+        "(Reading database ... 55%",
+        "(Reading database ... 60%",
+        "(Reading database ... 65%",
+        "(Reading database ... 70%",
+        "(Reading database ... 75%",
+        "(Reading database ... 80%",
+        "(Reading database ... 85%",
+        "(Reading database ... 90%",
+        "(Reading database ... 95%",
+        "(Reading database ... 100%",
+        "(Reading database ... 310034 files and directories currently installed.)",
+        "Preparing to unpack .../ltrace_0.7.3-6.1_amd64.deb ...",
+        "Unpacking ltrace (0.7.3-6.1) ...",
+        "Setting up ltrace (0.7.3-6.1) ...",
+        "Processing triggers for man-db (2.8.5-2) ...",
+        "",
+        "Running kernel seems to be up-to-date.",
+        "",
+        "Failed to check for processor microcode upgrades.",
+        "",
+        "No services need to be restarted.",
+        "",
+        "No containers need to be restarted.",
+        "",
+        "User sessions running outdated binaries:",
+        " patou @ session #3: sh[4024]"
+    ]
+}
+
+```
+
+Maintenant, testons si ltrace est bien installé sur la machine `localhost`.
+- Tapez `ltrace` dans la ligne de commande du virtualenv, il devrait être installé.
+- Sortir du virtualenv en tapant `deactivate`
+- Retaper `ltrace` dans la console en dehors du virtualenv. Il est toujours installé. Vérifiez avec `apt-get` si le paquet est maintenant installé effectivement. 
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ltrace
+ltrace: too few arguments
+Try `ltrace --help' for more information.
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ deactivate 
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ aptitude search ltrace
+p   babeltrace                                                         - Trace conversion program                                                    
+p   libbabeltrace-ctf-dev                                              - Babeltrace development files (transitional package)                         
+p   libbabeltrace-ctf1                                                 - Babeltrace conversion libraries (transitional package)                      
+p   libbabeltrace-dev                                                  - Babeltrace development files                                                
+p   libbabeltrace1                                                     - Babeltrace conversion libraries                                             
+p   libdevel-calltrace-perl                                            - Code tracer to follow function calls                                        
+i   ltrace                                                             - Tracks runtime library calls in dynamically linked programs                 
+p   python3-babeltrace                                                 - Babeltrace Python 3 bindings   
+```
+
+On voit que c'est maintenant 
+```sh 
+i   ltrace                                                             - Tracks runtime library calls in dynamically linked programs                 
+```
+`i` signifie que le paquet est installé.
+
+Dans la suite, nous allons plutôt lancer les tâches sous la forme de playbook,. Ceci était pour montrer qu'on pouvait très bien utiliser le mode `adhoc` qui signifie d'ailleurs ausi `à la volée`.
