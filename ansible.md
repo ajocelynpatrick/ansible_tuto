@@ -515,3 +515,31 @@ i   ltrace                                                             - Tracks 
 `i` signifie que le paquet est installé.
 
 Dans la suite, nous allons plutôt lancer les tâches sous la forme de playbook,. Ceci était pour montrer qu'on pouvait très bien utiliser le mode `adhoc` qui signifie d'ailleurs ausi `à la volée`.
+
+## 4.3 Les roles en détail
+Un rôle est une manière conventionnel (c'est à dire que tout le monde doit accepter) de nommer des fichiers et des dossiers pour grouper des tâches et des variables. 
+
+D'autres définitions existent mais il est peut-être plus facile de le comprendre avec un exemple.
+
+![](img/role_example.png)
+
+Dans cette structure de fichier, nous avons 2 roles: 
+- common
+- webserver
+
+`Common` contient un task spécifié par 2 fichiers yml: `main.yml` et `git.yml` et ils sont rangés dans le dossier `task` qui est lui même dans le dossier `common`.
+
+Nous avons également 2 fichiers de variables dans cette structure: `all` et `websever`. 
+
+Ansible définit par convention que le dossier contenu dans le dossier `role` sont les noms des roles que nous avons définit.
+
+Et les dossiers et fichiers dans ces dossiers de role (dans notre exemple, ce sont `common` et `webserver` sont accessibles 
+quand vous lancer la commande ansible qui comprend cette structure de dossier.
+
+Alors pourquoi voudrait-on utiliser des roles?
+Parce que les roles peuvent rendre des tasks réutilisables pour différentes serveurs et différents projets. 
+
+Les roles facilitent le relancement des tasks.
+
+Nous allons voir le vrai pouvoir des roles quand on travaillera sur les playbooks. Il est important de comprendre que si on n'utilise pas les roles, on n'utilise pas la vrai puissance d'Ansible.
+
