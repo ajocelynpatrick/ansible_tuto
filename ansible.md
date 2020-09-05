@@ -561,3 +561,18 @@ Et surtout nous avons 2 fichiers en plus par rapport à la section role:
 Il contient également les références des serveurs sur lesquels nous allons lancer les roles. C'est le pont qui fait la relation entre les roles à appliquer et les serveurs sur lesquels on souhaite les appliquer. 
 
 - `hosts`: Ce fichier contient la liste des serveurs sur lesquels nous souhaitons appliquer les roles. C'est aussi connu sous le nom de `invetory file` (fichier d'inventaire)
+
+
+## 4.5 Les inventory en détail
+C'est le fichier qui sert à lister les serveurs cibles pour ansible. Les serveurs sont en général groupés par role.
+
+Par défaut, ansible cherche le fichier inventory dans `/etc/ansible/hosts` mais vous devriez  spécifier votre fichier d'inventaire en utilisant l'option `-i` de ansible. C'est recommandé. 
+
+Dans l'exemple de playbook que nous avons vu dans la section précédente, nous avons spécifié un fichier `hosts` pour ce playbook.
+
+Le contenu d'un fichier `hosts` ressemble à ceci:
+
+![](img/hostsfile_example.png)
+
+Un serveur peut-être listé plusieurs fois dans plusieurs sections différentes.
+
