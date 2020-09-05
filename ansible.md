@@ -543,3 +543,21 @@ Les roles facilitent le relancement des tasks.
 
 Nous allons voir le vrai pouvoir des roles quand on travaillera sur les playbooks. Il est important de comprendre que si on n'utilise pas les roles, on n'utilise pas la vrai puissance d'Ansible.
 
+## 4.4 Les playbooks en détail
+
+Playbook est le terme qu'on entendra souvent dans Ansible. 
+C'est définit comme une collection de role (qui eux-même comme nous l'avons vu dans 4.3 sont des collections de tasks et toutes les variables et informations nécéssaires à l'execution de ces tasks).
+
+Pour lancer un playbook, ansible dispose d'une commande spécifique `ansible-playbook`
+
+Voici la structure de répertoire d'un playbook
+ 
+![](img/playbook_example.png)
+
+Nous reconnaissons ce qu'on a vu dans les roles. Dans ce playbook nous avons 2 roles `common` et `webserver`. 
+
+Et surtout nous avons 2 fichiers en plus par rapport à la section role:
+- `deployment.yml`: est le fichier d'instruction du playbook que nous allons référencer quand nous allons utiliser le playbook.
+Il contient également les références des serveurs sur lesquels nous allons lancer les roles. C'est le pont qui fait la relation entre les roles à appliquer et les serveurs sur lesquels on souhaite les appliquer. 
+
+- `hosts`: Ce fichier contient la liste des serveurs sur lesquels nous souhaitons appliquer les roles. C'est aussi connu sous le nom de `invetory file` (fichier d'inventaire)
