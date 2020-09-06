@@ -1,0 +1,6 @@
+# Ce fichier est l'instruction pour savoir quel task sera appliqué à quel serveur
+- name : appliquer des configurations à des serveurs listés dans hosts
+  hosts: all
+  user: ubuntu
+  roles:
+     - common

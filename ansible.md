@@ -765,7 +765,16 @@ Si on souhaite avoir plus d'affichage de la part de la machine distante, on peut
 (Le nombre de v dans l'option définit la quantité d'information qu'on peut récupérer)
 
 
+# 6. Création d'utilisateur dans le groupe utilisateur et clé autorisé
 
+Maintenant que notre infrastructure fontionne et qu'on peut executer des commandes à partir de notre machine sur une machine distante, nous allons faire plus de chose. 
+
+De plus, notre playbook actuel ne fait pas grand chose de plus que faire un ping.
+
+Avant de continuer, je vais d'abord mettre mon code dans notre répository git pour voir comment il évolue. 
+
+
+  
 
 
 
