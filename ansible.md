@@ -294,3 +294,484 @@ On a les deux clés `privée` et `publique`.
 Maintenant que nous avons notre clé ssh, nous allons commencer à travailler vraiment sur Ansible.
 
 
+# 4. Concepts ansibles à comprendre
+Il existe quelques termes et concepts que nous devons apprendre et comprendre avant d'avancer dans l'utilisation d'Ansible. Cela nous permettra de bien comprendre ce qu'on fait et les termes qu'on utilise.
+
+- les modules: Ce sont des libraries qui nous permettent d'executer des actions spécifiques (sur des fichiers, sur git, sur des bases de données, service ...). Les noms des modules dans Ansibles ont des noms familiers, c'est-à-dire que si vous travaillez avec git, le module Ansible responsable des opérations sur git s'appelera git également.
+![](img/module.png)
+
+- Les tasks: Ce sont des codes, qu'on a écrit pour executer une action et ces tasks, en général, utilisent des mdoules.
+Ex: Si on souhaite spécifier un répository git où on souhaite pousser notre code, on peut ecrire un task ansible pour le faire.
+![](img/tasks.png)
+
+- Les roles: Comme on peut avoir des dizaines ou des centaines de task, il nous faut également des manières d'organiser ou de grouper les tasks. Les rôles nous permettent de définir quels tâches doivent être appliqués à quels type de serveurs. Les rôles sont appliqués à chaque serveurs. On peut par exemple définir une configuration de sécurité propre à chaque serveur, dans ce cas, on définirait un role pour cela. 
+![](img/role_playbook.png)
+
+- Les playbooks: Un playbook est une manière d'organiser des roles et de les regrouper. On peut également lancer une tâche `ad-hoc` dans Ansible, comme nous l'avons déjà vu, mais les actions les tasks les plus complexes sont mis dans des playbook.
+
+Ce qui nous manque maintenant est comment nous allons addresser les différentes machines. On n'adressera pas par adresse IP ou nom de hote car ce ne serait pas réutilisable (il faut changer d'adresse dès qu'on souhaite changer de machine). Mais nous avons un autre concept pour cela. C'est l'Inventaire (Inventory).
+
+- Inventory: L'inventory associe un role à une adresse IP ou un nom de domaine. Cela nous permet de définir ce qui doit être executé dans les role et à quel endroit les executer dans les inventaires.
+![](img/inventory.png)
+
+- Le dernier concept qu'on doit connaitre est YAML: C'est al langage qui nous permettra d'écrire des tasks. C'est le même langage que ce qu'on a utiliser pour ecrire des fichier `docker-compose.yml`. 
+
+Nous avons donc vu 6 concepts fondamentaux d'ansible:
+- `Modules`: le code qui fait partie d'Ansible
+- `Tasks`: pour décrire quels modules on souhaite utiliser et comment on veut les utiliser
+- `Roles`: qui nous permet de grouper des tasks ensembles selon ce qu'ils font
+- `Playbooks` qui sont des ensembles de roles que nous allons executer.
+- `Inventory` ou Inventaire qui nous permet de cibler sur quelles machines, on souhaite lancer un playbook donné
+- `YAML` qui est le langage qui nous permet d'ecrire des tasks et des fichiers d'inventaire.
+
+Nous allons les voir un à un.
+
+## 4.1 Modules
+Les modules sont des codes qui sont fournies par Ansible (en python, en ruby ou en Java)
+
+Ce code permet de faire une action spécifique et claire comme par exemple: 
+- cloner un dépot git
+- Activer le firewall d'un OS
+- envoyer une notification (email par ex)
+
+En général, il existe des modules pour faire toute action auquel on peut penser. Ainsi, le site officiel a classé les modules par catégories.
+
+Et on les voit ici (https://docs.ansible.com/ansible/latest/modules/modules_by_category.html)
+
+Ainsi, on a évoqué un module qui permet d'envoyer des notifications et dans cette liste on a bien une catégorie `Notification` (https://docs.ansible.com/ansible/latest/modules/list_of_notification_modules.html)
+
+Et si vous êtes assez ambitieux pour cliquer sur `All modules`, vous trouverez des centaines de modules.
+
+Les modules sont appelés quand on écrit des tasks.
+
+## 4.2 Tasks 
+
+Les tâches (ou tasks) sont les éélments qui nous permettent d'effectuer ce que nous souhaitons faire sous Ansible.
+
+Les tasks sont écrits en YAML, ils invoquent/appellent des modules pour effectuer des actions.
+
+Voici un exemple de task écrit en YAML pour installer ltrace
+
+```yml
+- name: s'assurer que ltrace est installe
+  apt: name=ltrace state=present update_cache=yes
+  become: true
+```
+
+`name` est une description de ce que fait la tache et c'est lisible par un humain. Dans notre cas, le task sert à s'assurer que Git est installé sur une machine.
+
+La deuxième ligne contient `apt` (le module apt - donc on suppose qu'on est sur un système Debian ou Ubuntu) et on lui passe 3 arguments ( ̀`name` (nom du package qu'on souhaite vérifier), `state`(l'état du packet qu'on souhaite - ici on souhaite qu'il soit présent donc installé sinon on aurait mis `absent` donc desinstallé) et ̀`update_cache`(le cache est la liste des paquets dans l'OS et on veut le mettre à jour avant d'installer - comme si on faisait un `apt-get update`)).
+
+La troisième ligne: `become:true` signifie qu'on souhaite utiliser les privilèges du superuser (comme si on faisait `sudo` avant de lancer la tâche)
+
+### 4.2.1 Lancer une tâche en mode "ad-hoc"
+
+Pour commencer nous allons nous assurer que le paque `ltrace` n'est pas installé sur notre machine.
+
+```bash
+patou@pa-linux:~$ aptitude search ltrace
+p   babeltrace                                                         - Trace conversion program                                                    
+p   libbabeltrace-ctf-dev                                              - Babeltrace development files (transitional package)                         
+p   libbabeltrace-ctf1                                                 - Babeltrace conversion libraries (transitional package)                      
+p   libbabeltrace-dev                                                  - Babeltrace development files                                                
+p   libbabeltrace1                                                     - Babeltrace conversion libraries                                             
+p   libdevel-calltrace-perl                                            - Code tracer to follow function calls                                        
+p   ltrace                                                             - Tracks runtime library calls in dynamically linked programs                 
+p   python3-babeltrace                                                 - Babeltrace Python 3 bindings                                                
+```
+
+et voit la ligne `p   ltrace       ` qui signifie que le paquet n'est pas installé. Si il était installé, on aurait pu avoir `i` à la place de `p`. 
+De plus, si on tape `ltrace` dans la ligne de commande,on aurait:
+
+```bash
+patou@pa-linux:~$ ltrace
+bash: ltrace : commande introuvable
+```
+
+Nous allons alors l'installer en utilisant `Ansible` 
+
+- Entrer dans votre virtualenv. On rappele que pour cela, il faut entrer dans le répertoire où nous avons créé le virtualenv et sourcer le script `bin/activate` comme ci-dessous (si pas clair, revoir le s section 2)
+
+```bash
+patou@pa-linux:~$ cd ~/Documents/bizna/pasFini/demoAnsible/venvs/
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ source introansible/bin/activate
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ 
+```
+Pour s'assurer que le virtualenv est en route, on a le nom de l'environnement entre parenthèse à gauche de la ligne de commande
+
+Avant de lancer une tâche, nous allons récupérer les informations concernant la machine où on va installer `ltrace` ( dans notre cas, nous allons installer sur `localhost`).
+Cette étape s'appelle `facts gathering` (ou rassemblement des informations)
+La commande est la suivante:
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ansible localhost -m setup
+```
+La commande ne fera aucune action mais juste rassembler des informations concernant la machine `localhost`. Ces informations sont affichés en json en réponse à la commande.
+
+Maintenant, nous allons construire la commande adhoc ansible  qui va se charger d'installer ltrace sur notre machine localhost.
+
+Comment va-t-on créer notre commande `ansible`? 
+
+Comme nous l'avons vu dans la doc donnée en section 2 (pour le mode adhoc - https://docs.ansible.com/ansible/latest/user_guide/intro_adhoc.html), on va envoyer la commande `ansible` et : 
+ - on va spécifier le module avec l'option `-m <nom_module>`. Ici notre module sera `apt` puisque qu'on fera de l'installation.
+ - le deuxième options sera `-a` (pour adhoc command) et il sera suivi d'une chaine de caractère (entre `"`) qui sera les 3 arguments du module  `apt` (tel qu'il a été décrit dans la définition de notre task en paragraphe `4.1`). Donc ce sera `"name=ltrace state=present update_cache=yes"`
+
+- Comme nous avons l'option `become:true`, donc dans la ligne de commande nous devons rajoute `-b`. C'est l'equivalent en mode ligne de commande `ansible` et nous allons également rajouter l'option `-K` pour s'assurer que anible va bien demander bien le mot de passe du superutilisateur avant de faire quoi que ce soit.
+
+- Enfin, nous devons communiquer à ansible qu'il doit utiliser la version de python3 et pour cela, on lui renvoie une variable d'environnement spécial `ansible_python_interpreter` dont on la valeur est le chemin de python3 complet (donc `/usr/bin/python3`). Cela empêchera ansible d'utiliser n'importe quel python installé par défaut (ex: python2 )
+
+Tête bien reposé, la commande à taper est donc la suitante. Il faut penser à fournir le mot de passe root de votre machine quand ansible le demandera. 
+
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ansible localhost -m apt -a "name=ltrace state=present update_cache=yes" -b -K -e ansible_python_interpreter=/usr/bin/python3
+BECOME password: 
+[WARNING]: No inventory was parsed, only implicit localhost is available
+localhost | CHANGED => {
+    "cache_update_time": 1599224228,
+    "cache_updated": false,
+    "changed": true,
+    "stderr": "",
+    "stderr_lines": [],
+    "stdout": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nThe following NEW packages will be installed:\n  ltrace\n0 upgraded, 1 newly installed, 0 to remove and 14 not upgraded.\nNeed to get 143 kB of archives.\nAfter this operation, 372 kB of additional disk space will be used.\nGet:1 http://ftp.fr.debian.org/debian buster/main amd64 ltrace amd64 0.7.3-6.1 [143 kB]\nFetched 143 kB in 0s (558 kB/s)\nSelecting previously unselected package ltrace.\r\n(Reading database ... \r(Reading database ... 5%\r(Reading database ... 10%\r(Reading database ... 15%\r(Reading database ... 20%\r(Reading database ... 25%\r(Reading database ... 30%\r(Reading database ... 35%\r(Reading database ... 40%\r(Reading database ... 45%\r(Reading database ... 50%\r(Reading database ... 55%\r(Reading database ... 60%\r(Reading database ... 65%\r(Reading database ... 70%\r(Reading database ... 75%\r(Reading database ... 80%\r(Reading database ... 85%\r(Reading database ... 90%\r(Reading database ... 95%\r(Reading database ... 100%\r(Reading database ... 310034 files and directories currently installed.)\r\nPreparing to unpack .../ltrace_0.7.3-6.1_amd64.deb ...\r\nUnpacking ltrace (0.7.3-6.1) ...\r\nSetting up ltrace (0.7.3-6.1) ...\r\nProcessing triggers for man-db (2.8.5-2) ...\r\n\nRunning kernel seems to be up-to-date.\n\nFailed to check for processor microcode upgrades.\n\nNo services need to be restarted.\n\nNo containers need to be restarted.\n\nUser sessions running outdated binaries:\n patou @ session #3: sh[4024]\n",
+    "stdout_lines": [
+        "Reading package lists...",
+        "Building dependency tree...",
+        "Reading state information...",
+        "The following NEW packages will be installed:",
+        "  ltrace",
+        "0 upgraded, 1 newly installed, 0 to remove and 14 not upgraded.",
+        "Need to get 143 kB of archives.",
+        "After this operation, 372 kB of additional disk space will be used.",
+        "Get:1 http://ftp.fr.debian.org/debian buster/main amd64 ltrace amd64 0.7.3-6.1 [143 kB]",
+        "Fetched 143 kB in 0s (558 kB/s)",
+        "Selecting previously unselected package ltrace.",
+        "(Reading database ... ",
+        "(Reading database ... 5%",
+        "(Reading database ... 10%",
+        "(Reading database ... 15%",
+        "(Reading database ... 20%",
+        "(Reading database ... 25%",
+        "(Reading database ... 30%",
+        "(Reading database ... 35%",
+        "(Reading database ... 40%",
+        "(Reading database ... 45%",
+        "(Reading database ... 50%",
+        "(Reading database ... 55%",
+        "(Reading database ... 60%",
+        "(Reading database ... 65%",
+        "(Reading database ... 70%",
+        "(Reading database ... 75%",
+        "(Reading database ... 80%",
+        "(Reading database ... 85%",
+        "(Reading database ... 90%",
+        "(Reading database ... 95%",
+        "(Reading database ... 100%",
+        "(Reading database ... 310034 files and directories currently installed.)",
+        "Preparing to unpack .../ltrace_0.7.3-6.1_amd64.deb ...",
+        "Unpacking ltrace (0.7.3-6.1) ...",
+        "Setting up ltrace (0.7.3-6.1) ...",
+        "Processing triggers for man-db (2.8.5-2) ...",
+        "",
+        "Running kernel seems to be up-to-date.",
+        "",
+        "Failed to check for processor microcode upgrades.",
+        "",
+        "No services need to be restarted.",
+        "",
+        "No containers need to be restarted.",
+        "",
+        "User sessions running outdated binaries:",
+        " patou @ session #3: sh[4024]"
+    ]
+}
+
+```
+
+Maintenant, testons si ltrace est bien installé sur la machine `localhost`.
+- Tapez `ltrace` dans la ligne de commande du virtualenv, il devrait être installé.
+- Sortir du virtualenv en tapant `deactivate`
+- Retaper `ltrace` dans la console en dehors du virtualenv. Il est toujours installé. Vérifiez avec `apt-get` si le paquet est maintenant installé effectivement. 
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ ltrace
+ltrace: too few arguments
+Try `ltrace --help' for more information.
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ deactivate 
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs$ aptitude search ltrace
+p   babeltrace                                                         - Trace conversion program                                                    
+p   libbabeltrace-ctf-dev                                              - Babeltrace development files (transitional package)                         
+p   libbabeltrace-ctf1                                                 - Babeltrace conversion libraries (transitional package)                      
+p   libbabeltrace-dev                                                  - Babeltrace development files                                                
+p   libbabeltrace1                                                     - Babeltrace conversion libraries                                             
+p   libdevel-calltrace-perl                                            - Code tracer to follow function calls                                        
+i   ltrace                                                             - Tracks runtime library calls in dynamically linked programs                 
+p   python3-babeltrace                                                 - Babeltrace Python 3 bindings   
+```
+
+On voit que c'est maintenant 
+```sh 
+i   ltrace                                                             - Tracks runtime library calls in dynamically linked programs                 
+```
+`i` signifie que le paquet est installé.
+
+Dans la suite, nous allons plutôt lancer les tâches sous la forme de playbook,. Ceci était pour montrer qu'on pouvait très bien utiliser le mode `adhoc` qui signifie d'ailleurs ausi `à la volée`.
+
+## 4.3 Les roles en détail
+Un rôle est une manière conventionnel (c'est à dire que tout le monde doit accepter) de nommer des fichiers et des dossiers pour grouper des tâches et des variables. 
+
+D'autres définitions existent mais il est peut-être plus facile de le comprendre avec un exemple.
+
+![](img/role_example.png)
+
+Dans cette structure de fichier, nous avons 2 roles: 
+- common
+- webserver
+
+`Common` contient un task spécifié par 2 fichiers yml: `main.yml` et `git.yml` et ils sont rangés dans le dossier `task` qui est lui même dans le dossier `common`.
+
+Nous avons également 2 fichiers de variables dans cette structure: `all` et `websever`. 
+
+Ansible définit par convention que le dossier contenu dans le dossier `role` sont les noms des roles que nous avons définit.
+
+Et les dossiers et fichiers dans ces dossiers de role (dans notre exemple, ce sont `common` et `webserver` sont accessibles 
+quand vous lancer la commande ansible qui comprend cette structure de dossier.
+
+Alors pourquoi voudrait-on utiliser des roles?
+Parce que les roles peuvent rendre des tasks réutilisables pour différentes serveurs et différents projets. 
+
+Les roles facilitent le relancement des tasks.
+
+Nous allons voir le vrai pouvoir des roles quand on travaillera sur les playbooks. Il est important de comprendre que si on n'utilise pas les roles, on n'utilise pas la vrai puissance d'Ansible.
+
+## 4.4 Les playbooks en détail
+
+Playbook est le terme qu'on entendra souvent dans Ansible. 
+C'est définit comme une collection de role (qui eux-même comme nous l'avons vu dans 4.3 sont des collections de tasks et toutes les variables et informations nécéssaires à l'execution de ces tasks).
+
+Pour lancer un playbook, ansible dispose d'une commande spécifique `ansible-playbook`
+
+Voici la structure de répertoire d'un playbook
+ 
+![](img/playbook_example.png)
+
+Nous reconnaissons ce qu'on a vu dans les roles. Dans ce playbook nous avons 2 roles `common` et `webserver`. 
+
+Et surtout nous avons 2 fichiers en plus par rapport à la section role:
+- `deployment.yml`: est le fichier d'instruction du playbook que nous allons référencer quand nous allons utiliser le playbook.
+Il contient également les références des serveurs sur lesquels nous allons lancer les roles. C'est le pont qui fait la relation entre les roles à appliquer et les serveurs sur lesquels on souhaite les appliquer. 
+
+- `hosts`: Ce fichier contient la liste des serveurs sur lesquels nous souhaitons appliquer les roles. C'est aussi connu sous le nom de `invetory file` (fichier d'inventaire)
+
+
+## 4.5 Les inventory en détail
+C'est le fichier qui sert à lister les serveurs cibles pour ansible. Les serveurs sont en général groupés par role.
+
+Par défaut, ansible cherche le fichier inventory dans `/etc/ansible/hosts` mais vous devriez  spécifier votre fichier d'inventaire en utilisant l'option `-i` de ansible. C'est recommandé. 
+
+Dans l'exemple de playbook que nous avons vu dans la section précédente, nous avons spécifié un fichier `hosts` pour ce playbook.
+
+Le contenu d'un fichier `hosts` ressemble à ceci:
+
+![](img/hostsfile_example.png)
+
+Un serveur peut-être listé plusieurs fois dans plusieurs sections différentes.
+
+# 5. Créer notre premier playbook
+
+Voici la structure de répertoire de notre playbook.
+
+![](img/first_playbook.png)
+
+- Dans `hosts` nous allons mettre une adress IP de note serveur. 
+- Le fichier `playbook.yml`, permet à ansible de savoir quel utilisateur doit executer quel task?
+- Et nous avons un role nommé `common` avec un task que nous devons executer sur le serveur définit dans le fichier d'inventaire (`hosts`.)
+
+Nous allons construire `main.yml` à partir d'autres fichier `yml` comme `ping.yml`
+
+Nous allons alors commencer par créer cette structure de répertoire et nous allons le créer dans `/home/patou/Documents/bizna/pasFini/demoAnsible`. Vous pourrez changer le chemin selon là où vous voudriez.
+Voici les étapes que nous allons suivre:
+
+- entrer dans le répertoire où on veut créer le playbook
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible$ cd /home/patou/Documents/bizna/pasFini/demoAnsible
+```
+- créer le répertoire `first_playbook` quui sera vide bien sûr.
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible$ mkdir first_playbook
+```
+
+- Entrer dans le répertoire `first_playbook` et créer le fichier `playbook.yml`. 
+
+```bash
+patou@pa-linux:cd first_playbook
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible$ geany playbook.yml&
+```
+
+Dans le fichier `playbook.yml`, nous allons rajouter le code yml ci-dessous
+
+```yml
+# Ce fichier est l'instruction pour savoir quel task sera appliqué à quel serveur
+- name : appliquer des configurations à des serveurs listés dans hosts
+  hosts: all
+  user: root
+  roles:
+     - common
+```
+
+- name est la description
+- `hosts:all` demande d'appliquer le role à toutes les machines dans le fichier `hosts`
+- `user:root` les commandes sont lancés en tant que root.
+- ```yml 
+  roles:
+      - common
+      ```
+      signifie qu'on a un role appelé common dans notre playbook.
+Enregistrez-le.
+
+Nous allons ensuite créer un fichier `hosts`. 
+Pour le moment, nous allons créer le fichier `hosts` avec le contenu suivant:
+
+```sh
+[common]
+```
+
+
+Mais avant, il nous faut des serveurs. Quand on aura l'adresse IP du serveur, nous allons le rajouter à ce fichier host.
+
+Nous allons ensuite créer le répertoire `roles`. Et dans ce répertoire, nous allons également créer le dossier `common` et également dans ce répertoire, créer un répertoire nommé `tasks`. Et comme nous l'avons vu dans l'image ci-dessus, c'est ce répertoire qui contiendra nos fichiers de tasks.
+
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs/first_playbook$ ls
+hosts  playbook.yml
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs/first_playbook$ mkdir roles
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs/first_playbook$ cd roles/
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles$ mkdir common
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles$ cd common/
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common$ mkdir tasks 
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common$ cd tasks/
+```
+
+
+![](img/first_playbook.png)
+
+Selon la figure, dans le répertoire `tasks`, on a besoin d'avoir un fichier `main.yml` et `ping.yml`
+
+Nous allons commencer par créer `main.yml`. Ce fichier sert tout simplement à appeler tous les autres fichier `yml`.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common/tasks$ geany main.yml
+```
+Le contenu du fichier ̀ main.yml` sera la suivante:
+
+```yml
+# Inclus tous les autres fichier yml du role
+- include: ping.yml
+```
+
+Et ensuite, créer également le fichier `ping.yml`
+Le contenu sera la suivante:
+
+```yml
+# vérifies si un serveur est en fonctionnement
+- name: lance un ping sur un serveur distant
+  ping: 
+```
+
+
+Nous allons maintenant essayer de lancer le playbook nommé `first_playbook`, que nous venons de créer. Pour cela, nous allons utiliser la commande `ansible-playbook`. 
+
+Avant, nous devons remplir le fichier `hosts` par l'adresse IP d'une machine AWS distante.
+
+A ce moment, j'ai utilisé la machine avec l'adresse IP publique : `35.180.252.92`. Cette adresse IP est l'adresse IP d'une machine AWS EC2 que j'ai créé.
+
+Pour la création du tutorial, j'ai créé une machine AWS en suivant la doc :https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html#ec2-launch-instance.
+
+L'Adresse IP de ma machine AWS est : 35.180.252.92 (seulement pour ce tutorial - pour avoir une adresse ip valide, créer une nouvelle machine AWS)
+
+Ensuite, il nous faut être dans le répertoire principale de notre playbook `~/Documents/bizna/pasFini/demoAnsible/first_playbook`. 
+Nous allons envoyer des arguments à cette commande:
+- `-i` pour spécifier le fichier `hosts`
+- `--private-key=chemin_vers_fichier_cle_prive.pem` (pour ma part, ma clé privé se trouve dans `/home/patou/Documents/aws_key_pai/patou.pem`)
+- et enfin le fichier `playbook.yml`.
+
+Voici comment ça se passe:
+
+```bash
+introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common/tasks$ cd ../../..
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook$ ls
+hosts  playbook.yml  roles
+```
+Maintenant que nous sommes au niveau du répertoire principal de notre playbook, on peut lancer la commande: 
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml 
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+[WARNING]: Unhandled error in Python interpreter discovery for host 35.180.252.92: unexpected output from Python interpreter discovery
+[WARNING]: sftp transfer mechanism failed on [35.180.252.92]. Use ANSIBLE_DEBUG=1 to see detailed information
+[WARNING]: scp transfer mechanism failed on [35.180.252.92]. Use ANSIBLE_DEBUG=1 to see detailed information
+fatal: [35.180.252.92]: FAILED! => {"ansible_facts": {}, "changed": false, "failed_modules": {"setup": {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python"}, "failed": true, "module_stderr": "Shared connection to 35.180.252.92 closed.\r\n", "module_stdout": "Please login as the user \"ubuntu\" rather than the user \"root\".\r\n\r\n", "msg": "MODULE FAILURE\nSee stdout/stderr for the exact error", "rc": 0, "warnings": ["Platform unknown on host 35.180.252.92 is using the discovered Python interpreter at /usr/bin/python, but future installation of another Python interpreter could change this. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information."]}}, "msg": "The following modules failed to execute: setup\n"}
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.252.92              : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0  
+```
+On a donc eu une erreur. 
+
+Si on lit bien le le message d'erreur, on retrouve le problème 
+
+```js
+"module_stderr": "Shared connection to 35.180.252.92 closed.\r\n", 
+"module_stdout": "Please login as the user \"ubuntu\" rather than the user \"root\".\r\n\r\n", 
+"msg": "MODULE FAILURE\nSee stdout/stderr for the exact error"
+```
+
+Donc, il faut qu'on utilise le nom d'utilisateur `ubuntu` et non pas `root`. Il nous faut donc modifier notre fichier `playbook.yml` et changer `user` en `ubuntu`.
+
+De la même manière, nous avons aussi un warning:
+```bash
+["Platform unknown on host 35.180.252.92 is using the discovered Python interpreter at /usr/bin/python"]
+```
+C'est parce que la version de python est une version 3, il nous faut également spécifier la version de python à utiliser pour qu'ansible n'utilise que `python3`. Pour cela, nous allons modifier le fichier `host` et rajouter à droite de l'adresse ip la variable d'environnement pour la version de python
+
+```yml
+[common]
+35.180.252.92 ansible_python_interpreter=/usr/bin/python3
+```
+
+Enregsitrez le fichier et réessayer encore une fois. ça devrait fonctionner cette fois.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml 
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+ok: [35.180.252.92]
+
+TASK [common : lance un ping sur un serveur distant] ************************************************************************************************
+ok: [35.180.252.92]
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.252.92              : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
+
+<u>Remarque</u>:
+Nous avons testé et ça a fonctionné mais malheuresement, nous n'avions eu qu'un simple `ok=2` qui signifie que `TASK [Gathering Facts]` et `TASK [common : lance un ping sur un serveur distant]` on réussi.
+
+Si on souhaite avoir plus d'affichage de la part de la machine distante, on peut rajouter l'option `-vvvv` à la commande pour avoir plein d'information.
+(Le nombre de v dans l'option définit la quantité d'information qu'on peut récupérer)
+
+
+
+
+
+
+
+
+
+
+
+
