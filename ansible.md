@@ -576,3 +576,202 @@ Le contenu d'un fichier `hosts` ressemble à ceci:
 
 Un serveur peut-être listé plusieurs fois dans plusieurs sections différentes.
 
+# 5. Créer notre premier playbook
+
+Voici la structure de répertoire de notre playbook.
+
+![](img/first_playbook.png)
+
+- Dans `hosts` nous allons mettre une adress IP de note serveur. 
+- Le fichier `playbook.yml`, permet à ansible de savoir quel utilisateur doit executer quel task?
+- Et nous avons un role nommé `common` avec un task que nous devons executer sur le serveur définit dans le fichier d'inventaire (`hosts`.)
+
+Nous allons construire `main.yml` à partir d'autres fichier `yml` comme `ping.yml`
+
+Nous allons alors commencer par créer cette structure de répertoire et nous allons le créer dans `/home/patou/Documents/bizna/pasFini/demoAnsible`. Vous pourrez changer le chemin selon là où vous voudriez.
+Voici les étapes que nous allons suivre:
+
+- entrer dans le répertoire où on veut créer le playbook
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible$ cd /home/patou/Documents/bizna/pasFini/demoAnsible
+```
+- créer le répertoire `first_playbook` quui sera vide bien sûr.
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible$ mkdir first_playbook
+```
+
+- Entrer dans le répertoire `first_playbook` et créer le fichier `playbook.yml`. 
+
+```bash
+patou@pa-linux:cd first_playbook
+patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible$ geany playbook.yml&
+```
+
+Dans le fichier `playbook.yml`, nous allons rajouter le code yml ci-dessous
+
+```yml
+# Ce fichier est l'instruction pour savoir quel task sera appliqué à quel serveur
+- name : appliquer des configurations à des serveurs listés dans hosts
+  hosts: all
+  user: root
+  roles:
+     - common
+```
+
+- name est la description
+- `hosts:all` demande d'appliquer le role à toutes les machines dans le fichier `hosts`
+- `user:root` les commandes sont lancés en tant que root.
+- ```yml 
+  roles:
+      - common
+      ```
+      signifie qu'on a un role appelé common dans notre playbook.
+Enregistrez-le.
+
+Nous allons ensuite créer un fichier `hosts`. 
+Pour le moment, nous allons créer le fichier `hosts` avec le contenu suivant:
+
+```sh
+[common]
+```
+
+
+Mais avant, il nous faut des serveurs. Quand on aura l'adresse IP du serveur, nous allons le rajouter à ce fichier host.
+
+Nous allons ensuite créer le répertoire `roles`. Et dans ce répertoire, nous allons également créer le dossier `common` et également dans ce répertoire, créer un répertoire nommé `tasks`. Et comme nous l'avons vu dans l'image ci-dessus, c'est ce répertoire qui contiendra nos fichiers de tasks.
+
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs/first_playbook$ ls
+hosts  playbook.yml
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs/first_playbook$ mkdir roles
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/venvs/first_playbook$ cd roles/
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles$ mkdir common
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles$ cd common/
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common$ mkdir tasks 
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common$ cd tasks/
+```
+
+
+![](img/first_playbook.png)
+
+Selon la figure, dans le répertoire `tasks`, on a besoin d'avoir un fichier `main.yml` et `ping.yml`
+
+Nous allons commencer par créer `main.yml`. Ce fichier sert tout simplement à appeler tous les autres fichier `yml`.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common/tasks$ geany main.yml
+```
+Le contenu du fichier ̀ main.yml` sera la suivante:
+
+```yml
+# Inclus tous les autres fichier yml du role
+- include: ping.yml
+```
+
+Et ensuite, créer également le fichier `ping.yml`
+Le contenu sera la suivante:
+
+```yml
+# vérifies si un serveur est en fonctionnement
+- name: lance un ping sur un serveur distant
+  ping: 
+```
+
+
+Nous allons maintenant essayer de lancer le playbook nommé `first_playbook`, que nous venons de créer. Pour cela, nous allons utiliser la commande `ansible-playbook`. 
+
+Avant, nous devons remplir le fichier `hosts` par l'adresse IP d'une machine AWS distante.
+
+A ce moment, j'ai utilisé la machine avec l'adresse IP publique : `35.180.252.92`. Cette adresse IP est l'adresse IP d'une machine AWS EC2 que j'ai créé.
+
+Pour la création du tutorial, j'ai créé une machine AWS en suivant la doc :https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html#ec2-launch-instance.
+
+L'Adresse IP de ma machine AWS est : 35.180.252.92 (seulement pour ce tutorial - pour avoir une adresse ip valide, créer une nouvelle machine AWS)
+
+Ensuite, il nous faut être dans le répertoire principale de notre playbook `~/Documents/bizna/pasFini/demoAnsible/first_playbook`. 
+Nous allons envoyer des arguments à cette commande:
+- `-i` pour spécifier le fichier `hosts`
+- `--private-key=chemin_vers_fichier_cle_prive.pem` (pour ma part, ma clé privé se trouve dans `/home/patou/Documents/aws_key_pai/patou.pem`)
+- et enfin le fichier `playbook.yml`.
+
+Voici comment ça se passe:
+
+```bash
+introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook/roles/common/tasks$ cd ../../..
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook$ ls
+hosts  playbook.yml  roles
+```
+Maintenant que nous sommes au niveau du répertoire principal de notre playbook, on peut lancer la commande: 
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml 
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+[WARNING]: Unhandled error in Python interpreter discovery for host 35.180.252.92: unexpected output from Python interpreter discovery
+[WARNING]: sftp transfer mechanism failed on [35.180.252.92]. Use ANSIBLE_DEBUG=1 to see detailed information
+[WARNING]: scp transfer mechanism failed on [35.180.252.92]. Use ANSIBLE_DEBUG=1 to see detailed information
+fatal: [35.180.252.92]: FAILED! => {"ansible_facts": {}, "changed": false, "failed_modules": {"setup": {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python"}, "failed": true, "module_stderr": "Shared connection to 35.180.252.92 closed.\r\n", "module_stdout": "Please login as the user \"ubuntu\" rather than the user \"root\".\r\n\r\n", "msg": "MODULE FAILURE\nSee stdout/stderr for the exact error", "rc": 0, "warnings": ["Platform unknown on host 35.180.252.92 is using the discovered Python interpreter at /usr/bin/python, but future installation of another Python interpreter could change this. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information."]}}, "msg": "The following modules failed to execute: setup\n"}
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.252.92              : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0  
+```
+On a donc eu une erreur. 
+
+Si on lit bien le le message d'erreur, on retrouve le problème 
+
+```js
+"module_stderr": "Shared connection to 35.180.252.92 closed.\r\n", 
+"module_stdout": "Please login as the user \"ubuntu\" rather than the user \"root\".\r\n\r\n", 
+"msg": "MODULE FAILURE\nSee stdout/stderr for the exact error"
+```
+
+Donc, il faut qu'on utilise le nom d'utilisateur `ubuntu` et non pas `root`. Il nous faut donc modifier notre fichier `playbook.yml` et changer `user` en `ubuntu`.
+
+De la même manière, nous avons aussi un warning:
+```bash
+["Platform unknown on host 35.180.252.92 is using the discovered Python interpreter at /usr/bin/python"]
+```
+C'est parce que la version de python est une version 3, il nous faut également spécifier la version de python à utiliser pour qu'ansible n'utilise que `python3`. Pour cela, nous allons modifier le fichier `host` et rajouter à droite de l'adresse ip la variable d'environnement pour la version de python
+
+```yml
+[common]
+35.180.252.92 ansible_python_interpreter=/usr/bin/python3
+```
+
+Enregsitrez le fichier et réessayer encore une fois. ça devrait fonctionner cette fois.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/demoAnsible/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml 
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+ok: [35.180.252.92]
+
+TASK [common : lance un ping sur un serveur distant] ************************************************************************************************
+ok: [35.180.252.92]
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.252.92              : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
+
+<u>Remarque</u>:
+Nous avons testé et ça a fonctionné mais malheuresement, nous n'avions eu qu'un simple `ok=2` qui signifie que `TASK [Gathering Facts]` et `TASK [common : lance un ping sur un serveur distant]` on réussi.
+
+Si on souhaite avoir plus d'affichage de la part de la machine distante, on peut rajouter l'option `-vvvv` à la commande pour avoir plein d'information.
+(Le nombre de v dans l'option définit la quantité d'information qu'on peut récupérer)
+
+
+
+
+
+
+
+
+
+
+
+
