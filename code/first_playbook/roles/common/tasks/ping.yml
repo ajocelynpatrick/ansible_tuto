@@ -1,0 +1,3 @@
+# vérifies si un serveur est en fonctionnement
+- name: lance un ping sur un serveur distant
+  ping: 

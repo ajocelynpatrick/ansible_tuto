@@ -765,6 +765,65 @@ Si on souhaite avoir plus d'affichage de la part de la machine distante, on peut
 (Le nombre de v dans l'option définit la quantité d'information qu'on peut récupérer)
 
 
+# 6. Création d'utilisateur dans le groupe utilisateur et clé autorisé
+
+Maintenant que notre infrastructure fontionne et qu'on peut executer des commandes à partir de notre machine sur une machine distante, nous allons faire plus de chose. 
+
+De plus, notre playbook actuel ne fait pas grand chose de plus que faire un ping.
+
+Avant de continuer, je vais d'abord mettre mon code dans notre répository git pour voir comment il évolue. 
+
+
+Nous allons par la suite apprendre à créer un nouvel utilisateur. En effet, pour le moment, nous avons utilisé l'utilisateur `ubuntu` sur la machine AWS. Cependant, cet utilisateur n'était pas supposé être utilisé avec ansible, ce compte, je l'utilise pour me connecter en ssh à cette machine.
+
+Nous allons modifier notre playbook pour créer un utilisateur. Pour cela, créer un nouveau fichier dans `roles/common/tasks/new_user.yml`. Dans ce nouveau fichier de task, nous allons créer 3 tasks:
+- créer un nouveau groupe.
+- créer un nouvel utilisateur à rajouter dans ce groupe.
+- et enfin, créer un nouveau clé public pour cet utilisateur. Pour la clé, ce sera la clé que nous avons créé en section 3. Nous allons le rajouter à notre serveur comme étant une nouvelle clé publique. Cette clé pour moi est : `/home/patou/.ssh/introansible.pub`
+
+Maintenant nous devons rajouter notre nouveau fichier `new_user.yml` dans le fichier `main.yml` comme ceci:
+```yml
+# Inclus tous les autres fichier yml du role
+- include: ping.yml
+- include: new_user.yml
+```
+
+Remarque: comme nous n'avons pas encore créé le nouvel utilisateur, il nous faut encore utiliser l'utilisateur `ubuntu` pour créer ce nouvel utilisateur.
+
+Testons maintenant si le playbook s'execute bien.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+ok: [35.180.252.92]
+
+TASK [common : lance un ping sur un serveur distant] ************************************************************************************************
+ok: [35.180.252.92]
+
+TASK [common : create a new group (non-root)] *******************************************************************************************************
+changed: [35.180.252.92]
+
+TASK [common : create a new user (non-root)] ********************************************************************************************************
+changed: [35.180.252.92]
+
+TASK [common : add authorized_key to non root user] *************************************************************************************************
+changed: [35.180.252.92]
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.252.92              : ok=5    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0 
+```
+
+Comme on le voit: nos 5 tasks sont OK. Pas d'erreur.
+
+Si je relance ms commande avec l'option `-vv`, j'arrive à voir correctement les log avec les clés
+
+
+
+
+
 
 
 
