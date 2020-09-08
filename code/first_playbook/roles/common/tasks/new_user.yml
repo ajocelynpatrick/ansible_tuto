@@ -1,21 +1,21 @@
 # crée un nouvel utilisateur et rajoute une clé autorisé pour se logguer
 - name: create a new group (non-root)
   group: 
-    name: "deployers"
+    name: "{{deployer_group}}"
     state: present
   become: true
 
 - name: create a new user (non-root)
   user: 
-    name: "deployer"
-    group: "deployers"
+    name: "{{deployer_user}}"
+    group: "{{deployer_group}}"
     shell: "/bin/bash"
     state: present 
   become: true
 
 - name: add authorized_key to non root user
   authorized_key:
-    user: deployer
+    user: "{{deployer_user}}"
     state: present
     key: "{{lookup('file', '/home/patou/.ssh/introansible.pub') }}"
   become: true

@@ -818,9 +818,212 @@ PLAY RECAP *********************************************************************
 
 Comme on le voit: nos 5 tasks sont OK. Pas d'erreur.
 
-Si je relance ms commande avec l'option `-vv`, j'arrive à voir correctement les log avec les clés
+Si je relance ms commande avec l'option `-vv`, j'arrive à voir correctement les log avec les clés.
 
+# 7. Travailler avec des données
 
+Dans cette partie, nous allons chercher à apprendre comment utiliser des variables dans nos playbooks, lire des variables d'environnement (par exemple pour des données sensibles que nous ne souhaitons pas mettre dans des fichiers par exemple).
+Nous allons également apprendre à utiliser ce qu'on appelle des `templates` (dans ansible). Nous verrons aussi comment faire de l'encryption de donnée.
+
+A la fin du chapiter 6, nous avions un  playbook first_playbook comme ceci:
+
+![](img/chap6_playbook.png)
+
+Nous allons l'améliorer pour utiliser des variables. Nous allons donc le transformer comme suit:
+
+![](img/chap7_playbook_objective.png)
+
+Nous verrons comment on peut rajout des variables au fichier `all` par la suite.
+
+Nous verrons aussi comment nous allons utiliser des templates de variables dans la structure de fichier et comment l'utiliser.
+
+Pour déclarer rajouter le template de variable dans la structure de fichier, nous pouvons le faire comme ceci:
+
+![](img/chap7_templatex_objective.png)
+
+Et pour l'utilisation, on peut le faire comme suit:
+
+![](img/all_template_variables_usage.png)
+
+L'exemple montre qu'on a déclaré une variable `fdqn` dans le fichier `all`. Pour l'utiliser, nous pouvons utiliser la syntaxe `{{fdqn}}` pour lire le contenu (tout comme nous avons lu le contenu d'un fichier dans le playbook précédent)
+
+## 7.1 Création du répertoire de variable et travailler avec des variables
+
+Nous allons créer le répertoire `group_vars` comme suit:
+
+![](img/chap7_playbook_objective.png)
+
+On n'est pas obligé d'être dans la virtualenv puisque pour cela nous n'utilisons pas python.
+
+Ce qu'on souhaite faire est de ne pas créer des groupes et des noms d'utilisateurs saisies en dur mais dans le code des tasks pour le nom du group `deployers` et pour le nom de l'utilisateur `deployer` mais d'utiliser une variable de façon à pouvoir les remplacer facilement.
+
+Pour cela, nous allons mettre dans le fichier `all`, des codes `key:value` comme la suivante:
+
+```
+deployer_user: deployer
+deployer_group:deployers
+```
+Pensez aux commandes que vous devriez taper pour ces modifications et comparez à mes commandes si vous aviez eu correct.
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ tree
+.
+├── hosts
+├── playbook.yml
+└── roles
+    └── common
+        └── tasks
+            ├── main.yml
+            ├── new_user.yml
+            └── ping.yml
+
+3 directories, 5 files
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ mkdir group_vars
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ cd group_vars
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook/group_vars$ geany all
+```
+Ensuite tapez le contenu du fichier `all` qu'on a décrit ci-dessus et enregistrez le.
+
+Maintenant, nous allons utiliser ces variables dans notre playbook.
+
+Editez la tâche `new_user.yml` et modifiez-le comme et dedans, remplacez à la ligne 4 le nom du group `deployers` par le nom de la variable `{{deployer_group}}` définit dans le fichier `all`. Remplacez aussi le groupe en ligne 11. 
+Ensuite remplacez le nom du user `deployer` par le nom de la variable user qu'on a définit dans le fichier `all`, qui est `{{deployer_user}}` (ligne 10 et 18). 
+Attention ne pas publier les doubles accolades pour prendre la valeur des variables (https://docs.exponea.com/docs/jinja-syntax). 
+
+Le fichier devient alors :
+
+```yml
+# crée un nouvel utilisateur et rajoute une clé autorisé pour se logguer
+- name: create a new group (non-root)
+  group: 
+    name: {{deployer_group}}
+    state: present
+  become: true
+
+- name: create a new user (non-root)
+  user: 
+    name: {{deployer_user}}
+    group: {{deployer_group}}
+    shell: "/bin/bash"
+    state: present 
+  become: true
+
+- name: add authorized_key to non root user
+  authorized_key:
+    user: {{deployer_user}}
+    state: present
+    key: "{{lookup('file', '/home/patou/.ssh/introansible.pub') }}"
+  become: true
+```
+
+En relançant notre playbook (dans l'environnement virtuel), nous avons une erreur 
+
+```bash
+
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml -vv
+ansible-playbook 2.9.13
+  config file = None
+  configured module search path = ['/home/patou/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/lib/python3.7/site-packages/ansible
+  executable location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/bin/ansible-playbook
+  python version = 3.7.3 (default, Jul 25 2020, 13:03:44) [GCC 8.3.0]
+No config file found; using defaults
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml
+ERROR! We were unable to read either as JSON nor YAML, these are the errors we got from each:
+JSON: Expecting value: line 1 column 1 (char 0)
+
+Syntax Error while loading YAML.
+  found unacceptable key (unhashable type: 'AnsibleMapping')
+
+The error appears to be in '/home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml': line 4, column 12, but may
+be elsewhere in the file depending on the exact syntax problem.
+
+The offending line appears to be:
+
+  group:
+    name: {{deployer_group}}
+           ^ here
+We could be wrong, but this one looks like it might be an issue with
+missing quotes. Always quote template expression brackets when they
+start a value. For instance:
+
+    with_items:
+      - {{ foo }}
+
+Should be written as:
+
+    with_items:
+      - "{{ foo }}"
+```
+
+La résolution de ce problème est donnée par le message lui-même:
+
+```bash
+Always quote template expression brackets when they
+start a value. For instance:
+
+    with_items:
+      - {{ foo }}
+
+Should be written as:
+
+    with_items:
+      - "{{ foo }}"
+```
+
+Il faut mettre les élements entre accolades dans un guillemet.
+
+Et si on relance le playbook
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml -vv
+ansible-playbook 2.9.13
+  config file = None
+  configured module search path = ['/home/patou/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/lib/python3.7/site-packages/ansible
+  executable location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/bin/ansible-playbook
+  python version = 3.7.3 (default, Jul 25 2020, 13:03:44) [GCC 8.3.0]
+No config file found; using defaults
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml
+
+PLAYBOOK: playbook.yml ******************************************************************************************************************************
+1 plays in playbook.yml
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/playbook.yml:2
+The authenticity of host '35.180.190.35 (35.180.190.35)' can't be established.
+ECDSA key fingerprint is SHA256:QhSguuCdsNVbZv5pBSOSh8boH8DW1wFYnYDnhoxxxXc.
+Are you sure you want to continue connecting (yes/no)? yes
+ok: [35.180.190.35]
+META: ran handlers
+
+TASK [common : lance un ping sur un serveur distant] ************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml:2
+ok: [35.180.190.35] => {"changed": false, "ping": "pong"}
+
+TASK [common : create a new group (non-root)] *******************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:2
+ok: [35.180.190.35] => {"changed": false, "gid": 1001, "name": "deployers", "state": "present", "system": false}
+
+TASK [common : create a new user (non-root)] ********************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:8
+ok: [35.180.190.35] => {"append": false, "changed": false, "comment": "", "group": 1001, "home": "/home/deployer", "move_home": false, "name": "deployer", "shell": "/bin/bash", "state": "present", "uid": 1001}
+
+TASK [common : add authorized_key to non root user] *************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:16
+ok: [35.180.190.35] => {"changed": false, "comment": null, "exclusive": false, "follow": false, "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDmWP1ZxHU+0Jntmsp5q8Nnp9JLwQKC+EAEHHFMJdLRrzdpiw3CiPs0bilsHsPEoTdSvkZXmUxqIL67WOekiSuflAWwFxCI75KtX4xu7RWZuUMFU2MhfYHHMRwCsydHVpsI4qZId2C9wyb+SHLeH9tyj1PTtSJENhdhWQA7xDzacM06sH96+rNGrSgciCCO4GgvhmptHrsLh3vIn4fpZVn6Hzdi9J/5uA00bLV+I3s0DcBJWoZgX+qxKcmxqJVKFF12UhAZTUXRUVCM+JiD0keXIkeZJHt2QuBr0V1H6ka87ZWRialrUnrLaUNuODrD6Tjpk5VshDN7ME0aoy5XMI4+FUi2HiD3S/1IpvoFg+doxxkmqG/fKzc/ZbWWpCvdMzEuUcs/eyn9p03NZuI2IMQ0HC+O5rdKpp/U3TKjQqo2NQ4vJ0izK8NavtwpBMvchOvWJbqeZ665cjH+juHC/N0TMlIzHw4++hszENwYDkf/S53TE6QXQvvLd5xdDivHlJXG2A95kbf+cAYJOpiQfNGKci9vpEFfLqqmi6eggsmjFPUumMpAYBO08Z19gq7VAM6LsYoHq4r/RqxLEglwU2tjnAoELxJQpETza+4uZJ2YgwejiwsIMBbqqn5LNnnvsq6eVX7Py0hPrSdcAwXAmvS7ONUWVl98stafNDTMiH0nyQ== xchess64@gmail.com", "key_options": null, "keyfile": "/home/deployer/.ssh/authorized_keys", "manage_dir": true, "path": null, "state": "present", "user": "deployer", "validate_certs": true}
+META: ran handlers
+META: ran handlers
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.190.35              : ok=5    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0 
+```
+Tout s'est bien passé.
+
+Pour rajouter d'autres utilisateurs (et d'autres groupes), vous pouvez juste maintenant modifier le code dans le fichier `group_vars/all`
 
 
 
