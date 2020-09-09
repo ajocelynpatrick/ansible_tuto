@@ -1100,6 +1100,55 @@ Pensez à:
 - modifier l'adresse IP dans le fichier host pour le faire correspondre à votre machine AWS.
 - lancer ansible à partir du virtual environnement python sinon ça ne fonctionnera pas.
 
+Si tout s'est bien passé, vous devriez avoir le résultat suivant :
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml -vv
+ansible-playbook 2.9.13
+  config file = None
+  configured module search path = ['/home/patou/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/lib/python3.7/site-packages/ansible
+  executable location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/bin/ansible-playbook
+  python version = 3.7.3 (default, Jul 25 2020, 13:03:44) [GCC 8.3.0]
+No config file found; using defaults
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml
+
+PLAYBOOK: playbook.yml ******************************************************************************************************************************
+1 plays in playbook.yml
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/playbook.yml:2
+The authenticity of host '35.180.86.196 (35.180.86.196)' can't be established.
+ECDSA key fingerprint is SHA256:QhSguuCdsNVbZv5pBSOSh8boH8DW1wFYnYDnhoxxxXc.
+Are you sure you want to continue connecting (yes/no)? yes
+ok: [35.180.86.196]
+META: ran handlers
+
+TASK [common : lance un ping sur un serveur distant] ************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml:2
+ok: [35.180.86.196] => {"changed": false, "ping": "pong"}
+
+TASK [common : create a new group (non-root)] *******************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:2
+ok: [35.180.86.196] => {"changed": false, "gid": 1001, "name": "deployers", "state": "present", "system": false}
+
+TASK [common : create a new user (non-root)] ********************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:8
+ok: [35.180.86.196] => {"append": false, "changed": false, "comment": "", "group": 1001, "home": "/home/deployer", "move_home": false, "name": "deployer", "shell": "/bin/bash", "state": "present", "uid": 1001}
+
+TASK [common : add authorized_key to non root user] *************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:16
+ok: [35.180.86.196] => {"changed": false, "comment": null, "exclusive": false, "follow": false, "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDmWP1ZxHU+0Jntmsp5q8Nnp9JLwQKC+EAEHHFMJdLRrzdpiw3CiPs0bilsHsPEoTdSvkZXmUxqIL67WOekiSuflAWwFxCI75KtX4xu7RWZuUMFU2MhfYHHMRwCsydHVpsI4qZId2C9wyb+SHLeH9tyj1PTtSJENhdhWQA7xDzacM06sH96+rNGrSgciCCO4GgvhmptHrsLh3vIn4fpZVn6Hzdi9J/5uA00bLV+I3s0DcBJWoZgX+qxKcmxqJVKFF12UhAZTUXRUVCM+JiD0keXIkeZJHt2QuBr0V1H6ka87ZWRialrUnrLaUNuODrD6Tjpk5VshDN7ME0aoy5XMI4+FUi2HiD3S/1IpvoFg+doxxkmqG/fKzc/ZbWWpCvdMzEuUcs/eyn9p03NZuI2IMQ0HC+O5rdKpp/U3TKjQqo2NQ4vJ0izK8NavtwpBMvchOvWJbqeZ665cjH+juHC/N0TMlIzHw4++hszENwYDkf/S53TE6QXQvvLd5xdDivHlJXG2A95kbf+cAYJOpiQfNGKci9vpEFfLqqmi6eggsmjFPUumMpAYBO08Z19gq7VAM6LsYoHq4r/RqxLEglwU2tjnAoELxJQpETza+4uZJ2YgwejiwsIMBbqqn5LNnnvsq6eVX7Py0hPrSdcAwXAmvS7ONUWVl98stafNDTMiH0nyQ== xchess64@gmail.com", "key_options": null, "keyfile": "/home/deployer/.ssh/authorized_keys", "manage_dir": true, "path": null, "state": "present", "user": "deployer", "validate_certs": true}
+META: ran handlers
+META: ran handlers
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.86.196              : ok=5    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0  
+```
+
 
 
 
