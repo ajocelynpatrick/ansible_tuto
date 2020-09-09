@@ -1025,8 +1025,80 @@ Tout s'est bien passé.
 
 Pour rajouter d'autres utilisateurs (et d'autres groupes), vous pouvez juste maintenant modifier le code dans le fichier `group_vars/all`
 
+## 7.1 Travailler avec des variables d'environnement
 
+Il est interessant de savoir lire des variables d'environnement avec Ansible.
 
+Qu'est-ce qu'on entend par variable d'environnement? 
+C'est une variable qui peut être utilisé sur tout le système. 
+Ex: PATH est la variable qui permet à WINDOWS et LINUX de définir si un répertoire contient un executable ou pas. 
+
+Pour plus de détails, on peut lire ici: https://doc.ubuntu-fr.org/variables_d_environnement
+
+Sous linux pour créer une variable d'environnement, on peut utiliser la commande `export`.
+
+Exemple: 
+```bash
+patou@pa-linux:~$ export FILENAME=ansible.out
+patou@pa-linux:~$ 
+```
+(Attention: pas d'espace avant ou après le signe égale)
+
+Après, on a la possibilité de lire ou d'utiliser cette variable.
+
+```bash
+patou@pa-linux:~$ echo $FILENAME 
+ansible.out
+```
+Maintenant qu'on comprend mieux, nous allons créer une variable d'environnement qui soit un peu plus utile.
+
+Dans notre playbook, nous avons envoyé une clé au serveur que nous souhaitons manipuler. Cette clé est la clé publique `introansible.pub`
+
+Cependant, nous avons codé en dur l'emplacement de la clé. Si nous souhaitons changer de clé, on est obligé de modifier le code de notre task.
+
+Ce code est dans `new_user.yml` et c'est ceci :
+
+```yml
+    key: "{{lookup('file', '/home/patou/.ssh/introansible.pub') }}"
+```
+Ce qui serait bien c'est que l'emplacement de cette clé est bien mieux dans un fichier ou dans une variable d'environnement car on peut le changer quand on le souhaite.
+
+Nous allons créer une variable d'environnement nommé `AUTHORIZED_KEY` qui contient le chemin du fichier de clé comme suit:
+
+```sh
+patou@pa-linux:~$ export AUTHORIZED_KEY=/home/patou/.ssh/introansible.pub 
+patou@pa-linux:~$ echo $AUTHORIZED_KEY 
+/home/patou/.ssh/introansible.pub
+```
+Remarque: echo permet juste d'afficher la valeur de la variable et donc de s'assurer qu'elle a bien été évaluée.
+
+Maintenant, nous allons définir, dans `group_vars/all`, une variable qui utilise cette variable d'environnement pour accéder à notre clé. 
+
+Dans le fichier `group_vars/all`, rajouter le code ci-dessous:
+```yml
+authorized_key_filename: "{{ lookup('env', 'AUTHORIZED_KEY') }}"
+```
+C'est du code qu'on a déjà vu. On utilise un template jinja `{{ XXXX }}` et dedans, on met une instruction `lookup`. Pour plus de détails sur l'instruction lookup, voir la documentation ici (https://docs.ansible.com/ansible/latest/plugins/lookup.html). Dans notre cas, l'instruction `lookup`, recherche la valeur d'une variable d'environnement, d'où l'argument `env` et donc il va lire le fichier dont le nom est dans la variable d'environnement `AUTHORIZED_KEY` et mettre ce fichier (pas son contenu) dans la variable `authorized_key_filename`. 
+
+Maintenant, nous allons modifier notre tâche `new_user.yml` pour utiliser cette variable.
+
+Modifiez la ligne 20 qui contient :
+
+```yml
+    key: "{{lookup('file', '/home/patou/.ssh/introansible.pub') }}"
+```
+en 
+
+```yml
+    key: "{{lookup('file', authorized_key_filename) }}"
+```
+Cela permet d'utiliser la variable qui pointe vers le nom du fichier plutôt que d'écrire le nom du fichier en dur. C'est plus maintenable en cas de changement de fichier ou si on souhaite utiliser une autre clé.
+
+Tester maintenant le playbook, comme nous l'avons déjà toujours fait avant.
+
+Pensez à:
+- modifier l'adresse IP dans le fichier host pour le faire correspondre à votre machine AWS.
+- lancer ansible à partir du virtual environnement python sinon ça ne fonctionnera pas.
 
 
 
