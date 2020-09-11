@@ -1,0 +1,4 @@
+# Creation d'un fichier à partir d'un template j2
+- name: Creation d'un fichier à partir d'un template j2
+  template: src=example_template.j2
+            dest=/home/{{ deployer_user }}/our_example_output

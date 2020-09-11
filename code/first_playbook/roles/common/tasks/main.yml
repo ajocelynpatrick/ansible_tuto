@@ -1,3 +1,4 @@
 # Inclus tous les autres fichier yml du role
 - include: ping.yml
 - include: new_user.yml
+- include: write_template.yml

@@ -1201,6 +1201,98 @@ Il est important de savoir que dans ces paramètres, on peut aussi utiliser des 
 
 Essayer de faire le code du task avec tous ces informations et comparez ensuite avec la solution.
 
+La solution est de mettre le code ci-dessous dans un nouveau fichier `first_playbook/roles/common/task/write_template.yml`
+
+```yml
+# Creation d'un fichier à partir d'un template j2
+- name: Creation d'un fichier à partir d'un template j2
+  template: src=example_template.j2
+            dest=/home/{{ deployer_user }}/our_example_output
+```
+
+Maintenant si on execute. Il faut penser avant d'executer à :
+- lancer la machine AWS ditante
+- Changer l'adresse IP de la machine cible dans le fichier `hosts` du playbook.
+- se mettre en virtualenv pour avoir accès à `ansible`
+
+Mon execution se fait comme suit:
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ***********
+
+TASK [Gathering Facts] *********************************************************
+The authenticity of host '35.180.31.197 (35.180.31.197)' can't be established.
+ECDSA key fingerprint is SHA256:QhSguuCdsNVbZv5pBSOSh8boH8DW1wFYnYDnhoxxxXc.
+Are you sure you want to continue connecting (yes/no)? yes
+ok: [35.180.31.197]
+
+TASK [common : lance un ping sur un serveur distant] ***************************
+ok: [35.180.31.197]
+
+TASK [common : create a new group (non-root)] **********************************
+ok: [35.180.31.197]
+
+TASK [common : create a new user (non-root)] ***********************************
+ok: [35.180.31.197]
+
+TASK [common : add authorized_key to non root user] ****************************
+ok: [35.180.31.197]
+
+TASK [common : Creation d'un fichier à partir d'un template j2] ****************
+fatal: [35.180.31.197]: FAILED! => {"changed": false, "checksum": "104b5f9e59777d95c84504fcbb135fda69029198", "msg": "Destination /home/deployer not writable"}
+
+PLAY RECAP *********************************************************************
+35.180.31.197              : ok=5    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+```
+Mais j'ai une erreur:
+```json
+fatal: [35.180.31.197]: FAILED! => {"changed": false, "checksum": "104b5f9e59777d95c84504fcbb135fda69029198", "msg": "Destination /home/deployer not writable"}
+```
+
+on va analyser le problème. Pour cela, il nous faut plus d'info et donc on va lancer la commande avec l'option `-vvv` pour qu'il y ait plus d'informations. 
+Et là on a vers la fin de l'execution
+
+```bash
+    "invocation": {
+        "module_args": {
+            "_original_basename": "example_template.j2",
+            "attributes": null,
+            "backup": false,
+            "checksum": "104b5f9e59777d95c84504fcbb135fda69029198",
+            "content": null,
+            "delimiter": null,
+            "dest": "/home/deployer/our_example_output",
+            "directory_mode": null,
+            "follow": false,
+            "force": true,
+            "group": null,
+            "local_follow": null,
+            "mode": null,
+            "owner": null,
+            "regexp": null,
+            "remote_src": null,
+            "selevel": null,
+            "serole": null,
+            "setype": null,
+            "seuser": null,
+            "src": "/home/ubuntu/.ansible/tmp/ansible-tmp-1599846624.591285-3998-86937005727052/source",
+            "unsafe_writes": null,
+            "validate": null
+        }
+    },
+    "msg": "Destination /home/deployer not writable"
+}
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.31.197              : ok=5    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0  
+```
+Le message :
+`"msg": "Destination /home/deployer not writable"` nous montre le problème. On n'a pas le droit d'ecrire dans le répertoire.
+
+Proposez une solution.
+
 
 
 
