@@ -1078,7 +1078,7 @@ Dans le fichier `group_vars/all`, rajouter le code ci-dessous:
 ```yml
 authorized_key_filename: "{{ lookup('env', 'AUTHORIZED_KEY') }}"
 ```
-C'est du code qu'on a déjà vu. On utilise un template jinja `{{ XXXX }}` et dedans, on met une instruction `lookup`. Pour plus de détails sur l'instruction lookup, voir la documentation ici (https://docs.ansible.com/ansible/latest/plugins/lookup.html). Dans notre cas, l'instruction `lookup`, recherche la valeur d'une variable d'environnement, d'où l'argument `env` et donc il va lire le fichier dont le nom est dans la variable d'environnement `AUTHORIZED_KEY` et mettre ce fichier (pas son contenu) dans la variable `authorized_key_filename`. 
+C'est du code qu'on a déjà vu. On utilise un template jinja2 `{{ XXXX }}` et dedans, on met une instruction `lookup`. Pour plus de détails sur l'instruction lookup, voir la documentation ici (https://docs.ansible.com/ansible/latest/plugins/lookup.html). Dans notre cas, l'instruction `lookup`, recherche la valeur d'une variable d'environnement, d'où l'argument `env` et donc il va lire le fichier dont le nom est dans la variable d'environnement `AUTHORIZED_KEY` et mettre ce fichier (pas son contenu) dans la variable `authorized_key_filename`. 
 
 Maintenant, nous allons modifier notre tâche `new_user.yml` pour utiliser cette variable.
 
@@ -1148,6 +1148,63 @@ META: ran handlers
 PLAY RECAP ******************************************************************************************************************************************
 35.180.86.196              : ok=5    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0  
 ```
+# 8. Les templates ansible
+
+Dans ansible, il est possible de générer des fichiers en utilisant des templates ansible.
+Les templates ansibles sont des fichiers `jinja2` (avec des syntaxes jinja2) qui sont combinés avec des variables et permettent de sortir des fichiers textes.
+
+Dans cette section, nous allons apprendre à ecrire un template. 
+
+Voici la structure des modifications que nous allons apporter à notre playbook.
+
+![](img/template_ansible_file_structure.png)
+
+Le fichier `write_template.yml` est une tâche qui servira à ecrire notre template sur le serveur et le fichier `example_template.j2` est le template lui-même (qui sera dans le dossier `templates`).
+
+Nous allons commencer par créer le fichier `templates/example_template.j2` (n'oubliez pas qu'il doit être dans le répertoire ̀`templates` qui lui même sera dans le dossier ̀`common`).
+
+Le contenu du fichier est la suivante:
+
+```
+This is an example template. We set up a user named {{ deployer_user }} 
+and a group named {{ deployer_group }}
+```
+Comme c'est un template jinja2, lorsque le template sera interprété, les variables entre double accolades seront remplacés par leurs valeurs.
+
+Faites l'exercice de créer le fichier.
+
+Nous allons maintenant, créer la tâche mais avant, il faut inclure le nouveau fichier dans `main.yml` (comme nous l'avons fait déjà).
+Rajouter cela et comparez avec la correction sous git.
+
+Maintenant la tâche `write_template.yml`. 
+Esayez par vous-même d'ecrire la task et comparez avec ma verion pour voir si vous réussissez. 
+
+Voici les informations de la task.
+
+Le commentaire de début sera la suivante: 
+```yml
+# Creation d'un fichier à partir d'un template j2
+```
+La section `name` de notre task contiendra le même texte que ce commentaire.
+
+Le module à utiliser s'appelle `template` car nous utilisons un template. Regardez sa doc (https://docs.ansible.com/ansible/latest/modules/template_module.html#template-module)
+et inspire-vous des exemples.
+
+Au minimum, on doit donner à ce template 2 paramètres obligatoires (dans la doc, ces paramètres obligatories sont spécifiés par un mot clé `required` en rouge dans le tableau). 
+
+Ces paramètres sont:
+- dest: Chemin où on veut générer un fichier de sortie à partir du template. Ce chemin doit être sur la machine où on execute la task. Pour notre exemple, on souhaite écrire le fichier dans le répertoire du nom de l'utilisateur qu'on vient de créer et qui est dans `/home`. Le nom du fichier sera: `our_example_output`. Indice: utiliser une variable qui contient le nom du nouvel utilisateur dans la construction du chemin.
+
+- src: le chemin vers fichier template pour la task. Ce chemin doit être sur la machine qui execute `ansible`. On peut aussi spécifier juste le nom du fichier qui est dans le répertoire `templates` de notre tâche (sauf si on souhaite utiliser un template qui dans une autre tâche).
+
+Il est important de savoir que dans ces paramètres, on peut aussi utiliser des variables avec la syntaxe `{{ XXX }}`.
+
+Essayer de faire le code du task avec tous ces informations et comparez ensuite avec la solution.
+
+
+
+
+
 
 
 
