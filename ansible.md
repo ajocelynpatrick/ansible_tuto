@@ -1293,6 +1293,53 @@ Le message :
 
 Proposez une solution.
 
+La solution est très simple. Il faut être l'utilisateur qui a le droit pour créer le fichier. Il faut rajouter 
+```yml
+become:true
+```
+à la fin du task `write_template.yml` qui devient du coup:
+
+```yml
+# Creation d'un fichier à partir d'un template j2
+- name: Creation d'un fichier à partir d'un template j2
+  template: src=example_template.j2
+            dest=/home/{{ deployer_user }}/our_example_output
+  become: true
+```
+Avec `become: true`, nous devenons superutilisateur et donc nous avons les droits.
+
+L'execution devrait bien se passer.
+
+Le résultat est le suivant :
+
+```bash
+PLAY RECAP ******************************************************************************************************************************************
+35.180.31.197              : ok=6    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0 
+```
+
+Pour tester que le fichier est bien créer, nous allons nous connecter sur la machine distante en `ssh`.
+
+```bash
+patou@pa-linux:~$ ssh -i ~/.ssh/introansible deployer@ec2-35-180-31-197.eu-west-3.compute.amazonaws.com
+```
+Et ensuite, nous allons vérifier si le fichier est bien créé
+en le lisant:
+
+```bash
+deployer@ip-172-31-41-76:~$ vim /home/deployer/our_example_output
+```
+La commande le contenu du fichier. On remarque bien que les accolades ont disparus et le texte contient bien le nom de l'utilisateur et le nom de groupe.
+Pour sortir de `vim`. Tapez la touche `Esc` et ensuite tapez `:q!` et vous revenez à la ligne de commande.
+
+Pour ma part, j'ai changé de machine car j'ai dû éteindre ma machine EC2.
+
+
+
+
+
+
+
+
 
 
 
