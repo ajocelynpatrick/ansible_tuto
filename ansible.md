@@ -818,7 +818,527 @@ PLAY RECAP *********************************************************************
 
 Comme on le voit: nos 5 tasks sont OK. Pas d'erreur.
 
-Si je relance ms commande avec l'option `-vv`, j'arrive à voir correctement les log avec les clés
+Si je relance ms commande avec l'option `-vv`, j'arrive à voir correctement les log avec les clés.
+
+# 7. Travailler avec des données
+
+Dans cette partie, nous allons chercher à apprendre comment utiliser des variables dans nos playbooks, lire des variables d'environnement (par exemple pour des données sensibles que nous ne souhaitons pas mettre dans des fichiers par exemple).
+Nous allons également apprendre à utiliser ce qu'on appelle des `templates` (dans ansible). Nous verrons aussi comment faire de l'encryption de donnée.
+
+A la fin du chapiter 6, nous avions un  playbook first_playbook comme ceci:
+
+![](img/chap6_playbook.png)
+
+Nous allons l'améliorer pour utiliser des variables. Nous allons donc le transformer comme suit:
+
+![](img/chap7_playbook_objective.png)
+
+Nous verrons comment on peut rajout des variables au fichier `all` par la suite.
+
+Nous verrons aussi comment nous allons utiliser des templates de variables dans la structure de fichier et comment l'utiliser.
+
+Pour déclarer rajouter le template de variable dans la structure de fichier, nous pouvons le faire comme ceci:
+
+![](img/chap7_templatex_objective.png)
+
+Et pour l'utilisation, on peut le faire comme suit:
+
+![](img/all_template_variables_usage.png)
+
+L'exemple montre qu'on a déclaré une variable `fdqn` dans le fichier `all`. Pour l'utiliser, nous pouvons utiliser la syntaxe `{{fdqn}}` pour lire le contenu (tout comme nous avons lu le contenu d'un fichier dans le playbook précédent)
+
+## 7.1 Création du répertoire de variable et travailler avec des variables
+
+Nous allons créer le répertoire `group_vars` comme suit:
+
+![](img/chap7_playbook_objective.png)
+
+On n'est pas obligé d'être dans la virtualenv puisque pour cela nous n'utilisons pas python.
+
+Ce qu'on souhaite faire est de ne pas créer des groupes et des noms d'utilisateurs saisies en dur mais dans le code des tasks pour le nom du group `deployers` et pour le nom de l'utilisateur `deployer` mais d'utiliser une variable de façon à pouvoir les remplacer facilement.
+
+Pour cela, nous allons mettre dans le fichier `all`, des codes `key:value` comme la suivante:
+
+```
+deployer_user: deployer
+deployer_group:deployers
+```
+Pensez aux commandes que vous devriez taper pour ces modifications et comparez à mes commandes si vous aviez eu correct.
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ tree
+.
+├── hosts
+├── playbook.yml
+└── roles
+    └── common
+        └── tasks
+            ├── main.yml
+            ├── new_user.yml
+            └── ping.yml
+
+3 directories, 5 files
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ mkdir group_vars
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ cd group_vars
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook/group_vars$ geany all
+```
+Ensuite tapez le contenu du fichier `all` qu'on a décrit ci-dessus et enregistrez le.
+
+Maintenant, nous allons utiliser ces variables dans notre playbook.
+
+Editez la tâche `new_user.yml` et modifiez-le comme et dedans, remplacez à la ligne 4 le nom du group `deployers` par le nom de la variable `{{deployer_group}}` définit dans le fichier `all`. Remplacez aussi le groupe en ligne 11. 
+Ensuite remplacez le nom du user `deployer` par le nom de la variable user qu'on a définit dans le fichier `all`, qui est `{{deployer_user}}` (ligne 10 et 18). 
+Attention ne pas publier les doubles accolades pour prendre la valeur des variables (https://docs.exponea.com/docs/jinja-syntax). 
+
+Le fichier devient alors :
+
+```yml
+# crée un nouvel utilisateur et rajoute une clé autorisé pour se logguer
+- name: create a new group (non-root)
+  group: 
+    name: {{deployer_group}}
+    state: present
+  become: true
+
+- name: create a new user (non-root)
+  user: 
+    name: {{deployer_user}}
+    group: {{deployer_group}}
+    shell: "/bin/bash"
+    state: present 
+  become: true
+
+- name: add authorized_key to non root user
+  authorized_key:
+    user: {{deployer_user}}
+    state: present
+    key: "{{lookup('file', '/home/patou/.ssh/introansible.pub') }}"
+  become: true
+```
+
+En relançant notre playbook (dans l'environnement virtuel), nous avons une erreur 
+
+```bash
+
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml -vv
+ansible-playbook 2.9.13
+  config file = None
+  configured module search path = ['/home/patou/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/lib/python3.7/site-packages/ansible
+  executable location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/bin/ansible-playbook
+  python version = 3.7.3 (default, Jul 25 2020, 13:03:44) [GCC 8.3.0]
+No config file found; using defaults
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml
+ERROR! We were unable to read either as JSON nor YAML, these are the errors we got from each:
+JSON: Expecting value: line 1 column 1 (char 0)
+
+Syntax Error while loading YAML.
+  found unacceptable key (unhashable type: 'AnsibleMapping')
+
+The error appears to be in '/home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml': line 4, column 12, but may
+be elsewhere in the file depending on the exact syntax problem.
+
+The offending line appears to be:
+
+  group:
+    name: {{deployer_group}}
+           ^ here
+We could be wrong, but this one looks like it might be an issue with
+missing quotes. Always quote template expression brackets when they
+start a value. For instance:
+
+    with_items:
+      - {{ foo }}
+
+Should be written as:
+
+    with_items:
+      - "{{ foo }}"
+```
+
+La résolution de ce problème est donnée par le message lui-même:
+
+```bash
+Always quote template expression brackets when they
+start a value. For instance:
+
+    with_items:
+      - {{ foo }}
+
+Should be written as:
+
+    with_items:
+      - "{{ foo }}"
+```
+
+Il faut mettre les élements entre accolades dans un guillemet.
+
+Et si on relance le playbook
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml -vv
+ansible-playbook 2.9.13
+  config file = None
+  configured module search path = ['/home/patou/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/lib/python3.7/site-packages/ansible
+  executable location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/bin/ansible-playbook
+  python version = 3.7.3 (default, Jul 25 2020, 13:03:44) [GCC 8.3.0]
+No config file found; using defaults
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml
+
+PLAYBOOK: playbook.yml ******************************************************************************************************************************
+1 plays in playbook.yml
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/playbook.yml:2
+The authenticity of host '35.180.190.35 (35.180.190.35)' can't be established.
+ECDSA key fingerprint is SHA256:QhSguuCdsNVbZv5pBSOSh8boH8DW1wFYnYDnhoxxxXc.
+Are you sure you want to continue connecting (yes/no)? yes
+ok: [35.180.190.35]
+META: ran handlers
+
+TASK [common : lance un ping sur un serveur distant] ************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml:2
+ok: [35.180.190.35] => {"changed": false, "ping": "pong"}
+
+TASK [common : create a new group (non-root)] *******************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:2
+ok: [35.180.190.35] => {"changed": false, "gid": 1001, "name": "deployers", "state": "present", "system": false}
+
+TASK [common : create a new user (non-root)] ********************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:8
+ok: [35.180.190.35] => {"append": false, "changed": false, "comment": "", "group": 1001, "home": "/home/deployer", "move_home": false, "name": "deployer", "shell": "/bin/bash", "state": "present", "uid": 1001}
+
+TASK [common : add authorized_key to non root user] *************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:16
+ok: [35.180.190.35] => {"changed": false, "comment": null, "exclusive": false, "follow": false, "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDmWP1ZxHU+0Jntmsp5q8Nnp9JLwQKC+EAEHHFMJdLRrzdpiw3CiPs0bilsHsPEoTdSvkZXmUxqIL67WOekiSuflAWwFxCI75KtX4xu7RWZuUMFU2MhfYHHMRwCsydHVpsI4qZId2C9wyb+SHLeH9tyj1PTtSJENhdhWQA7xDzacM06sH96+rNGrSgciCCO4GgvhmptHrsLh3vIn4fpZVn6Hzdi9J/5uA00bLV+I3s0DcBJWoZgX+qxKcmxqJVKFF12UhAZTUXRUVCM+JiD0keXIkeZJHt2QuBr0V1H6ka87ZWRialrUnrLaUNuODrD6Tjpk5VshDN7ME0aoy5XMI4+FUi2HiD3S/1IpvoFg+doxxkmqG/fKzc/ZbWWpCvdMzEuUcs/eyn9p03NZuI2IMQ0HC+O5rdKpp/U3TKjQqo2NQ4vJ0izK8NavtwpBMvchOvWJbqeZ665cjH+juHC/N0TMlIzHw4++hszENwYDkf/S53TE6QXQvvLd5xdDivHlJXG2A95kbf+cAYJOpiQfNGKci9vpEFfLqqmi6eggsmjFPUumMpAYBO08Z19gq7VAM6LsYoHq4r/RqxLEglwU2tjnAoELxJQpETza+4uZJ2YgwejiwsIMBbqqn5LNnnvsq6eVX7Py0hPrSdcAwXAmvS7ONUWVl98stafNDTMiH0nyQ== xchess64@gmail.com", "key_options": null, "keyfile": "/home/deployer/.ssh/authorized_keys", "manage_dir": true, "path": null, "state": "present", "user": "deployer", "validate_certs": true}
+META: ran handlers
+META: ran handlers
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.190.35              : ok=5    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0 
+```
+Tout s'est bien passé.
+
+Pour rajouter d'autres utilisateurs (et d'autres groupes), vous pouvez juste maintenant modifier le code dans le fichier `group_vars/all`
+
+## 7.1 Travailler avec des variables d'environnement
+
+Il est interessant de savoir lire des variables d'environnement avec Ansible.
+
+Qu'est-ce qu'on entend par variable d'environnement? 
+C'est une variable qui peut être utilisé sur tout le système. 
+Ex: PATH est la variable qui permet à WINDOWS et LINUX de définir si un répertoire contient un executable ou pas. 
+
+Pour plus de détails, on peut lire ici: https://doc.ubuntu-fr.org/variables_d_environnement
+
+Sous linux pour créer une variable d'environnement, on peut utiliser la commande `export`.
+
+Exemple: 
+```bash
+patou@pa-linux:~$ export FILENAME=ansible.out
+patou@pa-linux:~$ 
+```
+(Attention: pas d'espace avant ou après le signe égale)
+
+Après, on a la possibilité de lire ou d'utiliser cette variable.
+
+```bash
+patou@pa-linux:~$ echo $FILENAME 
+ansible.out
+```
+Maintenant qu'on comprend mieux, nous allons créer une variable d'environnement qui soit un peu plus utile.
+
+Dans notre playbook, nous avons envoyé une clé au serveur que nous souhaitons manipuler. Cette clé est la clé publique `introansible.pub`
+
+Cependant, nous avons codé en dur l'emplacement de la clé. Si nous souhaitons changer de clé, on est obligé de modifier le code de notre task.
+
+Ce code est dans `new_user.yml` et c'est ceci :
+
+```yml
+    key: "{{lookup('file', '/home/patou/.ssh/introansible.pub') }}"
+```
+Ce qui serait bien c'est que l'emplacement de cette clé est bien mieux dans un fichier ou dans une variable d'environnement car on peut le changer quand on le souhaite.
+
+Nous allons créer une variable d'environnement nommé `AUTHORIZED_KEY` qui contient le chemin du fichier de clé comme suit:
+
+```sh
+patou@pa-linux:~$ export AUTHORIZED_KEY=/home/patou/.ssh/introansible.pub 
+patou@pa-linux:~$ echo $AUTHORIZED_KEY 
+/home/patou/.ssh/introansible.pub
+```
+Remarque: echo permet juste d'afficher la valeur de la variable et donc de s'assurer qu'elle a bien été évaluée.
+
+Maintenant, nous allons définir, dans `group_vars/all`, une variable qui utilise cette variable d'environnement pour accéder à notre clé. 
+
+Dans le fichier `group_vars/all`, rajouter le code ci-dessous:
+```yml
+authorized_key_filename: "{{ lookup('env', 'AUTHORIZED_KEY') }}"
+```
+C'est du code qu'on a déjà vu. On utilise un template jinja2 `{{ XXXX }}` et dedans, on met une instruction `lookup`. Pour plus de détails sur l'instruction lookup, voir la documentation ici (https://docs.ansible.com/ansible/latest/plugins/lookup.html). Dans notre cas, l'instruction `lookup`, recherche la valeur d'une variable d'environnement, d'où l'argument `env` et donc il va lire le fichier dont le nom est dans la variable d'environnement `AUTHORIZED_KEY` et mettre ce fichier (pas son contenu) dans la variable `authorized_key_filename`. 
+
+Maintenant, nous allons modifier notre tâche `new_user.yml` pour utiliser cette variable.
+
+Modifiez la ligne 20 qui contient :
+
+```yml
+    key: "{{lookup('file', '/home/patou/.ssh/introansible.pub') }}"
+```
+en 
+
+```yml
+    key: "{{lookup('file', authorized_key_filename) }}"
+```
+Cela permet d'utiliser la variable qui pointe vers le nom du fichier plutôt que d'écrire le nom du fichier en dur. C'est plus maintenable en cas de changement de fichier ou si on souhaite utiliser une autre clé.
+
+Tester maintenant le playbook, comme nous l'avons déjà toujours fait avant.
+
+Pensez à:
+- modifier l'adresse IP dans le fichier host pour le faire correspondre à votre machine AWS.
+- lancer ansible à partir du virtual environnement python sinon ça ne fonctionnera pas.
+
+Si tout s'est bien passé, vous devriez avoir le résultat suivant :
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml -vv
+ansible-playbook 2.9.13
+  config file = None
+  configured module search path = ['/home/patou/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/lib/python3.7/site-packages/ansible
+  executable location = /home/patou/Documents/bizna/pasFini/demoAnsible/venvs/introansible/bin/ansible-playbook
+  python version = 3.7.3 (default, Jul 25 2020, 13:03:44) [GCC 8.3.0]
+No config file found; using defaults
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml
+statically imported: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml
+
+PLAYBOOK: playbook.yml ******************************************************************************************************************************
+1 plays in playbook.yml
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ********************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/playbook.yml:2
+The authenticity of host '35.180.86.196 (35.180.86.196)' can't be established.
+ECDSA key fingerprint is SHA256:QhSguuCdsNVbZv5pBSOSh8boH8DW1wFYnYDnhoxxxXc.
+Are you sure you want to continue connecting (yes/no)? yes
+ok: [35.180.86.196]
+META: ran handlers
+
+TASK [common : lance un ping sur un serveur distant] ************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/ping.yml:2
+ok: [35.180.86.196] => {"changed": false, "ping": "pong"}
+
+TASK [common : create a new group (non-root)] *******************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:2
+ok: [35.180.86.196] => {"changed": false, "gid": 1001, "name": "deployers", "state": "present", "system": false}
+
+TASK [common : create a new user (non-root)] ********************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:8
+ok: [35.180.86.196] => {"append": false, "changed": false, "comment": "", "group": 1001, "home": "/home/deployer", "move_home": false, "name": "deployer", "shell": "/bin/bash", "state": "present", "uid": 1001}
+
+TASK [common : add authorized_key to non root user] *************************************************************************************************
+task path: /home/patou/Documents/bizna/pasFini/Ansible/code/first_playbook/roles/common/tasks/new_user.yml:16
+ok: [35.180.86.196] => {"changed": false, "comment": null, "exclusive": false, "follow": false, "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDmWP1ZxHU+0Jntmsp5q8Nnp9JLwQKC+EAEHHFMJdLRrzdpiw3CiPs0bilsHsPEoTdSvkZXmUxqIL67WOekiSuflAWwFxCI75KtX4xu7RWZuUMFU2MhfYHHMRwCsydHVpsI4qZId2C9wyb+SHLeH9tyj1PTtSJENhdhWQA7xDzacM06sH96+rNGrSgciCCO4GgvhmptHrsLh3vIn4fpZVn6Hzdi9J/5uA00bLV+I3s0DcBJWoZgX+qxKcmxqJVKFF12UhAZTUXRUVCM+JiD0keXIkeZJHt2QuBr0V1H6ka87ZWRialrUnrLaUNuODrD6Tjpk5VshDN7ME0aoy5XMI4+FUi2HiD3S/1IpvoFg+doxxkmqG/fKzc/ZbWWpCvdMzEuUcs/eyn9p03NZuI2IMQ0HC+O5rdKpp/U3TKjQqo2NQ4vJ0izK8NavtwpBMvchOvWJbqeZ665cjH+juHC/N0TMlIzHw4++hszENwYDkf/S53TE6QXQvvLd5xdDivHlJXG2A95kbf+cAYJOpiQfNGKci9vpEFfLqqmi6eggsmjFPUumMpAYBO08Z19gq7VAM6LsYoHq4r/RqxLEglwU2tjnAoELxJQpETza+4uZJ2YgwejiwsIMBbqqn5LNnnvsq6eVX7Py0hPrSdcAwXAmvS7ONUWVl98stafNDTMiH0nyQ== xchess64@gmail.com", "key_options": null, "keyfile": "/home/deployer/.ssh/authorized_keys", "manage_dir": true, "path": null, "state": "present", "user": "deployer", "validate_certs": true}
+META: ran handlers
+META: ran handlers
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.86.196              : ok=5    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0  
+```
+# 8. Les templates ansible
+
+Dans ansible, il est possible de générer des fichiers en utilisant des templates ansible.
+Les templates ansibles sont des fichiers `jinja2` (avec des syntaxes jinja2) qui sont combinés avec des variables et permettent de sortir des fichiers textes.
+
+Dans cette section, nous allons apprendre à ecrire un template. 
+
+Voici la structure des modifications que nous allons apporter à notre playbook.
+
+![](img/template_ansible_file_structure.png)
+
+Le fichier `write_template.yml` est une tâche qui servira à ecrire notre template sur le serveur et le fichier `example_template.j2` est le template lui-même (qui sera dans le dossier `templates`).
+
+Nous allons commencer par créer le fichier `templates/example_template.j2` (n'oubliez pas qu'il doit être dans le répertoire ̀`templates` qui lui même sera dans le dossier ̀`common`).
+
+Le contenu du fichier est la suivante:
+
+```
+This is an example template. We set up a user named {{ deployer_user }} 
+and a group named {{ deployer_group }}
+```
+Comme c'est un template jinja2, lorsque le template sera interprété, les variables entre double accolades seront remplacés par leurs valeurs.
+
+Faites l'exercice de créer le fichier.
+
+Nous allons maintenant, créer la tâche mais avant, il faut inclure le nouveau fichier dans `main.yml` (comme nous l'avons fait déjà).
+Rajouter cela et comparez avec la correction sous git.
+
+Maintenant la tâche `write_template.yml`. 
+Esayez par vous-même d'ecrire la task et comparez avec ma verion pour voir si vous réussissez. 
+
+Voici les informations de la task.
+
+Le commentaire de début sera la suivante: 
+```yml
+# Creation d'un fichier à partir d'un template j2
+```
+La section `name` de notre task contiendra le même texte que ce commentaire.
+
+Le module à utiliser s'appelle `template` car nous utilisons un template. Regardez sa doc (https://docs.ansible.com/ansible/latest/modules/template_module.html#template-module)
+et inspire-vous des exemples.
+
+Au minimum, on doit donner à ce template 2 paramètres obligatoires (dans la doc, ces paramètres obligatories sont spécifiés par un mot clé `required` en rouge dans le tableau). 
+
+Ces paramètres sont:
+- dest: Chemin où on veut générer un fichier de sortie à partir du template. Ce chemin doit être sur la machine où on execute la task. Pour notre exemple, on souhaite écrire le fichier dans le répertoire du nom de l'utilisateur qu'on vient de créer et qui est dans `/home`. Le nom du fichier sera: `our_example_output`. Indice: utiliser une variable qui contient le nom du nouvel utilisateur dans la construction du chemin.
+
+- src: le chemin vers fichier template pour la task. Ce chemin doit être sur la machine qui execute `ansible`. On peut aussi spécifier juste le nom du fichier qui est dans le répertoire `templates` de notre tâche (sauf si on souhaite utiliser un template qui dans une autre tâche).
+
+Il est important de savoir que dans ces paramètres, on peut aussi utiliser des variables avec la syntaxe `{{ XXX }}`.
+
+Essayer de faire le code du task avec tous ces informations et comparez ensuite avec la solution.
+
+La solution est de mettre le code ci-dessous dans un nouveau fichier `first_playbook/roles/common/task/write_template.yml`
+
+```yml
+# Creation d'un fichier à partir d'un template j2
+- name: Creation d'un fichier à partir d'un template j2
+  template: src=example_template.j2
+            dest=/home/{{ deployer_user }}/our_example_output
+```
+
+Maintenant si on execute. Il faut penser avant d'executer à :
+- lancer la machine AWS ditante
+- Changer l'adresse IP de la machine cible dans le fichier `hosts` du playbook.
+- se mettre en virtualenv pour avoir accès à `ansible`
+
+Mon execution se fait comme suit:
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ***********
+
+TASK [Gathering Facts] *********************************************************
+The authenticity of host '35.180.31.197 (35.180.31.197)' can't be established.
+ECDSA key fingerprint is SHA256:QhSguuCdsNVbZv5pBSOSh8boH8DW1wFYnYDnhoxxxXc.
+Are you sure you want to continue connecting (yes/no)? yes
+ok: [35.180.31.197]
+
+TASK [common : lance un ping sur un serveur distant] ***************************
+ok: [35.180.31.197]
+
+TASK [common : create a new group (non-root)] **********************************
+ok: [35.180.31.197]
+
+TASK [common : create a new user (non-root)] ***********************************
+ok: [35.180.31.197]
+
+TASK [common : add authorized_key to non root user] ****************************
+ok: [35.180.31.197]
+
+TASK [common : Creation d'un fichier à partir d'un template j2] ****************
+fatal: [35.180.31.197]: FAILED! => {"changed": false, "checksum": "104b5f9e59777d95c84504fcbb135fda69029198", "msg": "Destination /home/deployer not writable"}
+
+PLAY RECAP *********************************************************************
+35.180.31.197              : ok=5    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+```
+Mais j'ai une erreur:
+```json
+fatal: [35.180.31.197]: FAILED! => {"changed": false, "checksum": "104b5f9e59777d95c84504fcbb135fda69029198", "msg": "Destination /home/deployer not writable"}
+```
+
+on va analyser le problème. Pour cela, il nous faut plus d'info et donc on va lancer la commande avec l'option `-vvv` pour qu'il y ait plus d'informations. 
+Et là on a vers la fin de l'execution
+
+```bash
+    "invocation": {
+        "module_args": {
+            "_original_basename": "example_template.j2",
+            "attributes": null,
+            "backup": false,
+            "checksum": "104b5f9e59777d95c84504fcbb135fda69029198",
+            "content": null,
+            "delimiter": null,
+            "dest": "/home/deployer/our_example_output",
+            "directory_mode": null,
+            "follow": false,
+            "force": true,
+            "group": null,
+            "local_follow": null,
+            "mode": null,
+            "owner": null,
+            "regexp": null,
+            "remote_src": null,
+            "selevel": null,
+            "serole": null,
+            "setype": null,
+            "seuser": null,
+            "src": "/home/ubuntu/.ansible/tmp/ansible-tmp-1599846624.591285-3998-86937005727052/source",
+            "unsafe_writes": null,
+            "validate": null
+        }
+    },
+    "msg": "Destination /home/deployer not writable"
+}
+
+PLAY RECAP ******************************************************************************************************************************************
+35.180.31.197              : ok=5    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0  
+```
+Le message :
+`"msg": "Destination /home/deployer not writable"` nous montre le problème. On n'a pas le droit d'ecrire dans le répertoire.
+
+Proposez une solution.
+
+La solution est très simple. Il faut être l'utilisateur qui a le droit pour créer le fichier. Il faut rajouter 
+```yml
+become:true
+```
+à la fin du task `write_template.yml` qui devient du coup:
+
+```yml
+# Creation d'un fichier à partir d'un template j2
+- name: Creation d'un fichier à partir d'un template j2
+  template: src=example_template.j2
+            dest=/home/{{ deployer_user }}/our_example_output
+  become: true
+```
+Avec `become: true`, nous devenons superutilisateur et donc nous avons les droits.
+
+L'execution devrait bien se passer.
+
+Le résultat est le suivant :
+
+```bash
+PLAY RECAP ******************************************************************************************************************************************
+35.180.31.197              : ok=6    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0 
+```
+
+Pour tester que le fichier est bien créer, nous allons nous connecter sur la machine distante en `ssh`.
+
+```bash
+patou@pa-linux:~$ ssh -i ~/.ssh/introansible deployer@ec2-35-180-31-197.eu-west-3.compute.amazonaws.com
+```
+Et ensuite, nous allons vérifier si le fichier est bien créé
+en le lisant:
+
+```bash
+deployer@ip-172-31-41-76:~$ vim /home/deployer/our_example_output
+```
+La commande le contenu du fichier. On remarque bien que les accolades ont disparus et le texte contient bien le nom de l'utilisateur et le nom de groupe.
+Pour sortir de `vim`. Tapez la touche `Esc` et ensuite tapez `:q!` et vous revenez à la ligne de commande.
+
+Pour ma part, j'ai changé de machine car j'ai dû éteindre ma machine EC2.
+
+
+
+
+
+
+
 
 
 
