@@ -1335,6 +1335,150 @@ Pour ma part, j'ai changé de machine car j'ai dû éteindre ma machine EC2.
 
 
 
+# 9. Chiffrage de donnée:
+
+Quand on crée une playbook ansible, il est interessant de ranger les sources de ces playbook dans des gestionnaires de fichiers comme pour du code. 
+Cependant, certains fichiers Ansible contiennent des mots de passe ou des clés. Il est donc nécéssaire de cacher ces informations pour que les utilisateurs n'y aient pas accès.
+
+Comme solution, on peut envisager de les chiffrer.
+
+Chiffrer une donnée consiste à le crypter (utiliser un algo de cryptage) pour qu'on puisse le cacher. Pour chiffrer des donnée, un utilitaire existe dans ansible, il s'appelle `ansible-vault`. On également d'autres commandes `ansible-vault encrypt` (pour chiffrer: passer de clair à caché)  et `ansible-vault decrypt` (pour déchiffrer ou passé de caché à lisible). 
+
+Cela nous permet de ranger des fichier de mots de passe ou de clés sans que ces données soient en clair et donc sécurisé.
+
+L'utilisation avec un playbook ansible pourrait être cette syntaxe:
+``` bash
+ansible-playbook --ask-vault-password ....
+```
+Nous allons voir des exemples par la suite.
+
+## 8.1 Utilisation de "ansible-vault"
+Actuellement, nous nous connectons en ssh et donc en utilisant la commande `ssh -i` et en fournissant une clé privée correspondant à la clé publique qu'on a mis sur l'ordinateur à contrôller.
+
+Supposons que nous voudrions également créer un mot de passe pour l'utilisateur `deployer` pour que cet utilisateur puisse se connecter sans `ssh`. En effet, actuellement, cet utilisateur ne peut pas se connecter sans ssh (cela sous-entend également que l'utilisateur ne peut pas se connecter avec `sudo` quand il est en session car il n'a pas de mot de passe)
+
+Pour cela, nous devons lui créer un mot de passe et ranger le mot de passe dans le fichier `all` dans le répertoire `group_vars`. Cependant, n'importe qui, qui peut lire le fichier `all` pourra voir le mot de passe et donc l'utiliser (ce qui est dommage pour l'utilisateur mais `ansible-vault` peut nous aider)
+
+Nous allons commencer par créer un mot de passe pour l'utilisateur `deployer`. Avant l'ajout du mot de passe, on n'a rien à cacher dans le fichier `all` mais après l'ajout du mot de passe, il faut prendre des mesures pour qu'on ne puisse pas lire le mot de passe.
+
+Nous allons modifier ce fichier comme suit:
+
+- Ouvrir le fichier `first_playbook/group_vars/all` et rajouter la ligne pour le mot de passe de l'utilisateur comme suit:
+
+```yml
+deployer_user: deployer
+deployer_group: deployers
+deployer_user_password: helloWORLD123
+authorized_key_filename: "{{ lookup('env', 'AUTHORIZED_KEY') }}"
+```
+
+J'ai rajouté la ligne` deployer_user_password`.
+
+Maintenant, si on essaye de lire le contenu de ce fichier, malheureusement, on peut lire son contenu sans problème.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ cat group_vars/all 
+deployer_user: deployer
+deployer_group: deployers
+deployer_user_password: helloWORLD123
+authorized_key_filename: "{{ lookup('env', 'AUTHORIZED_KEY') }}"
+```
+Nous allons alors utiliser `ansible-vault` pour chiffrer le fichier. Lors de l'execution de la command de chiffrage, ansible demandera un mot de passe de chiffrement, qu'il faudra fournir. Attention à ne pas l'oublier ensuite.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-vault encrypt group_vars/all 
+New Vault password: 
+Confirm New Vault password: 
+Encryption successful
+```
+Maintenant, si on essaye encore de voir le contenu du fichier, on ne verra plus rien.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ cat group_vars/all 
+$ANSIBLE_VAULT;1.1;AES256
+32326531353038613839363461643431346532363461666261616530643230303936633263633961
+6631326238316335666239353466643432373561623061370a373433333732393030643164373831
+62316535386139656431326164633166623132613134636361623264636263353662323234646365
+6465316662303466330a636538633435393539313731306239333633613261643566303366626362
+34363465383066336133623464636430313434376336303262636239633437643762333464386635
+31346465343538383132653461356137633561333737303137663365623838303337343438393238
+30643139366434356232303536333236616333333664616337396365616339323462336438646163
+66323538636231353364313661306438646662363163646164306638323337636133323336323362
+39346633346231363461643730613866383332343162643132656335303337663135396132373930
+64636631316431656464623166653530613530346666333830346565336236323966323464343238
+34346565663261363164376334643632386237643534393631626539303861623965386362303337
+37626566633466323436
+```
+
+Avec ce genre de cryptage, on peut très bien mettre les données sur un repo `git` sans avoir peur que les mots de passe trainent dans la nature. 
+
+Supposons que maintenant, nous souhaitons modifier le fichier pour changer le mot de passe de l'utilisateur. Pour cela, utiliser la commande `ansible-vault edit` et fournir le mot de passe de chiffrement. Le fichier s'ouvrira alors avec l'editeur par défaut (pour ma part, c'est vim).
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-vault edit group_vars/all 
+Vault password:
+```
+
+Si toutefois, vous souhaiterez utiliser un autre éditeur, il faut juste utiliser une variable d'environnement, dans la commande,  pour définir le nom de l'éditeur comme ceci (je voudrais utiliser geany)
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ EDITOR=geany ansible-vault edit group_vars/all
+Vault password: 
+```
+
+Maintenant que le fichier est sécurisé, comment l'utilises-t-on avec notre playbook? (carpour decrypter le fichier, on a besoin du mot de passe de chiffrage)
+
+On lance le playbook comme on a toujours fait mais avec l'option `--ask-vault-pass` comme ceci:
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-playbook --ask-vault-pass -i ./hosts --private-key=/home/patou/Documents/aws_key_pai/patou.pem playbook.yml
+Vault password: 
+
+PLAY [appliquer des configurations à des serveurs listés dans hosts] ***********
+
+TASK [Gathering Facts] *********************************************************
+ok: [35.181.51.229]
+
+TASK [common : lance un ping sur un serveur distant] ***************************
+ok: [35.181.51.229]
+
+TASK [common : create a new group (non-root)] **********************************
+ok: [35.181.51.229]
+
+TASK [common : create a new user (non-root)] ***********************************
+changed: [35.181.51.229]
+
+TASK [common : add authorized_key to non root user] ****************************
+changed: [35.181.51.229]
+
+TASK [common : Creation d'un fichier à partir d'un template j2] ****************
+changed: [35.181.51.229]
+
+PLAY RECAP *********************************************************************
+35.181.51.229              : ok=6    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
+Maintenant, l'utilisateur a un mot de passe et peut utiliser ce mot de passe.
+
+On peut également, décrypter définitivement le fichier en utilisant `ansible-vault decrypt`.
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ ansible-vault decrypt group_vars/all 
+Vault password: 
+Decryption successful
+```
+
+Si maintenant on lit le contenu du fichier, on pourra le lire à nouveau
+
+```bash
+(introansible) patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/first_playbook$ cat group_vars/all 
+deployer_user: deployer
+deployer_group: deployers
+deployer_user_password: helloWORLD123
+authorized_key_filename: "{{ lookup('env', 'AUTHORIZED_KEY') }}"
+```
+
+
+
 
 
 
