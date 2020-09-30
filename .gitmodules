@@ -1,0 +1,3 @@
+[submodule "book-and-video-code-examples"]
+	path = book-and-video-code-examples
+	url = ../book-and-video-code-examples.git
