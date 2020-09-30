@@ -1,3 +1,5 @@
+
+[TOC]
 Ansible est un outil d'automatisation. Il permet d'automatiser des choses que les developpeurs ou les admins font manuellement (en général). 
 
 Ansible peut automatiser des étapes de manière à ce que ces étapes soient facilement lisibles et maintenables par les autres.
@@ -1476,6 +1478,14 @@ deployer_group: deployers
 deployer_user_password: helloWORLD123
 authorized_key_filename: "{{ lookup('env', 'AUTHORIZED_KEY') }}"
 ```
+
+# 10. Projet : Configuration de serveurit
+Maintenant, on sait écrire un playbook ansible, on sait utiliser des variables, chiffrer des informations critiques et utiliser des templates. Nous allons maintenant, essayer d'appliquer ces connaissances avec un vrai projet.
+
+Supposons que nous voudrions configurer un serveur web et un serveur de base de données.
+
+Nous devons alors provisionner un serveur sur AWS, créer des groupes non-root sur ces serveurs, créer des utilisateurs, protéger les serveurs contre les attaques, configurer les serveurs pour utilisation, rajouter des certificats pour HTTPS, s'assurer que les serveurs sont toujours en marche (en cas d'arrêt ou de crash, s'assurer que le serveur redemarre aussitôt), installer une base de donnée sur l'un des serveurs et vérifier la connectivité.
+
 
 
 
