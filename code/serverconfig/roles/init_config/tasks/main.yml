@@ -1,0 +1,27 @@
+# créer un groupe non root avec des droits sudo
+- name : creation de groupe non root
+  group: 
+     name: {{ deploy_group }}
+     state: present
+
+# Créer un utilisateur non root 
+- name : creation d'utilisateur non root
+  user: 
+     name: {{ deploy_user }}
+     group: {{ deploy_group }}
+     state: present
+     shell: "/bin/bash"
+
+# Associer une clé privée/publique à ces deux comptes.
+- name: ajouter une clé autorisée à l'utilisateur non-root
+  authorized_key: 
+     user: {{ deploy_user }}
+     key: "{{ lookup('file', ssh_dir + ssh_key_name) }}"
+
+# Ajouter l'utilisateur dans le fichier /etc/sudoers pour pouvoir faire sudo
+- name: ajouter l'utilisateur au group sudoers
+  lineinfile:
+     dest: /etc/sudoers
+     state: present 
+
+

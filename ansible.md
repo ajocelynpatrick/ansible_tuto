@@ -1577,6 +1577,150 @@ Mettons à jour notre fichier d'inventaire, `hosts`.
 
 
 
+Nous allons maintenant créer un nouveau playbook (rappel: c'est un fichier yml à la racine du répertoire `serverconfig`). Pour cela, créer un fichier à la racine du répertoire, appelez ce fichier `init_config.yml`
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig$ vim init_config.yml
+```
+
+Voici le contenu du fichier :
+
+```yml
+# crée un groupe non-root et un nouvel utilisateur
+- name: appliquer une configuration initiale au serveur
+  hosts: init_config
+  user: root
+  role: 
+    - init_config
+```
+On rappelle que:
+- `name` donne une description du playbook.
+- `hosts` donne la liste des hôtes auxquels sera appliquée la playbook (tel qu'il es définit dans le fichier d'inventaire `hosts`)
+- `user` donne le nom de l'utilisateur sous lequel, le playbook sera executé. Comme les machines AWS EC2 n'ont pas de compte `root`, il faudra changer cet utilisateur en `ubuntu` avant de l'executer.
+- `role` contient les rôles qui sont contenus dans le playbook. On rappelle qu'un playbook est un ensemble de rôle.
+
+Ainsi, dans la suite, nous allons définir le rôle. Pour cela, il faut créer un répertoire nommé `init_config` dans le répertoire `roles`
+
+## 10.3 Création du premier role
+Nous allons créer le premier role `init_config`
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig$ cd roles/
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig/roles$ mkdir init_config
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig/roles$ cd init_config/
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig/roles/init_config$ mkdir tasks
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig/roles/init_config$ cd tasks
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig/roles/init_config/tasks$ tree
+.
+
+0 directories, 0 files
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig/roles/init_config/tasks$ vim main.yml
+```
+Si on regarde la structure de répertoire à partir de `serverconfig`, on obtient ceci :
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code$ cd serverconfig/
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/code/serverconfig$ tree
+.
+├── group_vars
+├── hosts
+├── init_config.yml
+└── roles
+    ├── common
+    ├── database
+    ├── init_config
+    │   └── tasks
+    │       └── main.yml
+    └── webserver
+
+7 directories, 3 files
+
+```
+
+Editer le fichier `main.yml` et nous allons créer une tâche qui va créer un `group`. Nous allons utiliser alors le module `group` (https://docs.ansible.com/ansible/2.8/modules/group_module.html#group-module).
+
+
+### **Task Creation du groupe**
+
+```yml
+# créer un groupe non root avec des droits sudo
+- name : creation de groupe non-root
+  group:
+     name: {{ deploy_group }}
+     state: present
+```
+
+### **Task Creation de l'utilisateur**
+
+Dans ce même fichier, nous allons créer une deuxième tâche qui va créer un utilisateur non-root. Le module à utiliser est `user`. La doc se trouve à https://docs.ansible.com/ansible/2.8/modules/user_module.html#user-module.
+
+Actions spécifiques à définir:
+
+- Il faut penser à utiliser le champ `group` pour associer cet utilisateur au groupe qu'on vient de créer. 
+- Penser aussi à définir un shell par défaut pour l'utilisateur qui est `/bin/bash`. Le champ correspondant est `shell`.
+
+```yml
+# Créer un utilisateur non root 
+- name : creation d'utilisateur non root
+  user:
+     name: {{ deploy_user }}
+     group: {{ deploy_group }}
+     state: present
+     shell: "/bin/bash"
+```
+
+
+### **Ajout d'une clé ssh pour l'utilisateur dans chaque machine**
+De plus, nous ne souhaitons jamais que l'utilisateur puisse se logguer en utilisant un mot de passe. On veut qu'il utilise toujours une clé ssh. Il faut donc en plus rajouter aux deux machines une clé autorisée qu'on associera à ce compte utilisateur. Il nous faut donc rajouter une tâche qui rajoute cette clé. Le moduke à utiliser est `authorized_key` https://docs.ansible.com/ansible/2.8/modules/authorized_key_module.html#authorized-key-module.
+
+Le mode d'utilisation de ce module est de spécifier:
+- `user`- l'utilisateur à qui on affecte la clé
+- `state` si on souhaite que la clé soit présent (créée) ou absent (supprimée)
+- `key` la valeur de la clé en utilisant l'instruction `look_up` tel qu'on l'a déjà fait.
+
+Voici le code du task
+
+```yml 
+# Associer une clé privée/publique à ces deux comptes.
+- name: ajouter une clé autorisée à l'utilisateur non-root
+  authorized_key:
+     user: {{ deploy_user }}
+     key: "{{ lookup('file', ssh_dir + ssh_key_name) }}"
+```
+
+Notez l'existence de 2 nouvelles variables `ssh_dir` et `ssh_key_name`
+
+### **Rajout de l'utilisateur dans le groupe sudo**
+Les utilisateurs doivent pouvoir lancer des opérations avec des privilèges. Il faut que l'utilisateur soit donc rajouté au groupe sudo. Pour cela, nous avons besoin de modifier le fichier ̀ sudoers`. 
+Techniquement, nous avons ce tutorial pour le faire https://askubuntu.com/questions/7477/how-can-i-add-a-new-user-as-sudoer-using-the-command-line. 
+En Ansible, on utiliser le module `lineinfile` pour rajouter une ligne dans un fichier existant qui est le fichier `/etc/sudoers`. 
+Nous allons rajouter une ligne dans le fichier (comme le montre le tutorial)
+
+On a besoin de spécifier pour ce module les arguments suivants:
+- `dest` : pour le fichier de destination. Pour nous ici, c'est `etc/sudoers`
+- `state`: spécifie si le fichier est déjà présent ou pas.
+- `regexp`: permet de chercher des expressions en utilisant une expression régulière. Cette expression régulière remplacera la dernière occurence trouvée et chaque ligne du fichier est recherchée.
+
+(video 42 03:46)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
