@@ -1,14 +1,14 @@
 [init_config]
-XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
-XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+15.236.183.144 ansible_python_interpreter=/usr/bin/python3
+35.181.78.157 ansible_python_interpreter=/usr/bin/python3
 
 [common]
-XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
-XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+15.236.183.144 ansible_python_interpreter=/usr/bin/python3
+35.181.78.157 ansible_python_interpreter=/usr/bin/python3
 
 [webserver]
-XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+35.181.78.157 ansible_python_interpreter=/usr/bin/python3
 
 [database]
-XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+15.236.183.144 ansible_python_interpreter=/usr/bin/python3
 

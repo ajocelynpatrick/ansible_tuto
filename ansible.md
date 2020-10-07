@@ -1561,20 +1561,19 @@ XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
 Pour le moment, on a créé le fichier et pas rempli les adresses IP car on ne les a pas encore.
 
 
+Maintenant que nous avons fait certaines choses, nous allons résumer ce que nous allons faire par la suite:
+
+- Nous allons tout d'abord provisionner deux serveurs sur EC2 et modifier les adresses IP dans l'inventory file
+- Nous allons ensuite créer un groupe `non-root` et un utilisateur (l'objectif est de ne pas se connecter en tant que `root`)
 
 
+Je suis allé dans Amazon EC2 et j'ai créé deux machines (Ce cours ne concerne pas AWS donc je ne détaille pas comment j'ai créé les machines EC2). 
 
+A partir de là, pour assurer que nos machines ont toujours le même adresse IP même après le redemarrage, nous allons allouer des `adresses IP Elastic` et les associer à nos machines.
 
+Les deux machines sont similaires. Les adresses IP Publiques alloués sont : `15.236.183.144` et `35.181.78.157`. Nous allons utiliser le premier comme serveur de `database` et le deuxième comme `webserver`. 
 
-
-
-
-
-
-
-
-
-
+Mettons à jour notre fichier d'inventaire, `hosts`.
 
 
 
