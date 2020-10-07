@@ -1,0 +1,6 @@
+# crée un groupe non-root et un nouvel utilisateur
+- name: appliquer une configuration initiale au serveur
+  hosts: init_config
+  user: root
+  role: 
+    - init_config

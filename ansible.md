@@ -627,8 +627,8 @@ Dans le fichier `playbook.yml`, nous allons rajouter le code yml ci-dessous
 - ```yml 
   roles:
       - common
-      ```
-      signifie qu'on a un role appelé common dans notre playbook.
+  ```
+signifie qu'on a un role appelé common dans notre playbook.
 Enregistrez-le.
 
 Nous allons ensuite créer un fichier `hosts`. 
@@ -1485,6 +1485,85 @@ Maintenant, on sait écrire un playbook ansible, on sait utiliser des variables,
 Supposons que nous voudrions configurer un serveur web et un serveur de base de données.
 
 Nous devons alors provisionner un serveur sur AWS, créer des groupes non-root sur ces serveurs, créer des utilisateurs, protéger les serveurs contre les attaques, configurer les serveurs pour utilisation, rajouter des certificats pour HTTPS, s'assurer que les serveurs sont toujours en marche (en cas d'arrêt ou de crash, s'assurer que le serveur redemarre aussitôt), installer une base de donnée sur l'un des serveurs et vérifier la connectivité.
+
+## 10.1 Les bases de notre projet
+
+Nous allons commencer par créer un tout nouveau projet. Pour cela, créer un répertoire, dans le même répertoire que mon premier playbook, `/home/patou/Documents/bizna/pasFini/Ansible`.
+
+Je vais y créer un répertoire vide nommé `serverconfig`.
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible$ mkdir serverconfig
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible$ cd serverconfig/
+```
+Plus tard quand vous travaillerez sur Ansible, vous aurez déjà un certain nombre de code à copier/coller pour faciliter la création de votre playbook. Pour le moment, nous allons commencer avec un répertoire vide.
+
+Créer ensuite les répertoires classiques qu'on doit mettre dans un playbook, `group_vars` et `roles`. 
+Dans le répertoire roles, nous avons besoin de 3 répertoires (pour trois roles `common`, `database` et `webserver`)
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/serverconfig$ mkdir group_vars roles 
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/serverconfig$ ls
+group_vars  roles
+```
+
+On obtient alors à la fin ceci:
+
+```bash
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/serverconfig/roles$ mkdir common database webserver
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/serverconfig/roles$ tree
+.
+├── common
+├── database
+└── webserver
+
+3 directories, 0 files
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/serverconfig/roles$ cd ..
+patou@pa-linux:~/Documents/bizna/pasFini/Ansible/serverconfig$ tree
+.
+├── group_vars
+└── roles
+    ├── common
+    ├── database
+    └── webserver
+
+5 directories, 0 files
+```
+Nous aurons besoin de deux serveurs EC2 de type l'un pour la base de donnée et l'autre pour le serveur web.
+
+Les serveurs peuvent avoir des configurations similaires. Nous allons les préparer vraiment à la fin avant le lancement du playbook.
+
+## 10.2 Création du fichier d'inventaire
+
+Nous allons définit 4 roles dans le fichier d'inventaire: 
+- `init_config` qui nous servira à créer le groupe et les utilisateurs qui nous seront nécéssaires.
+- `common` qui nous servira à executer les tâches qui sont communes à tous les serveurs
+- `webserver` pour les tâches qui seront executées sur le web server
+- `database` pour les tâches qui concerne le server de base de données.
+
+On rappelle qu'il faut créer le fichier `hosts`
+
+```yml
+[init_config]
+XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+
+[common]
+XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+
+[webserver]
+XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+
+[database]
+XX.XX.XX.XX ansible_python_interpreter=/usr/bin/python3
+```
+Pour le moment, on a créé le fichier et pas rempli les adresses IP car on ne les a pas encore.
+
+
+
+
+
 
 
 
